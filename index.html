@@ -52,7 +52,7 @@
         .stat-number { font-weight:700; margin-right:4px; color:#5f7f7a; background:#eef2f9; display:inline-block; min-width:28px; text-align:center; border-radius:20px; padding:0 4px; }
         .empty-message { text-align:center; padding:2rem; color:#8ba0bc; background:#fafdff; border-radius:1.5rem; margin:0.5rem 0; }
 
-        /* 模态框 - 极简 */
+        /* 模态框 */
         .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.3); display:none; align-items:center; justify-content:center; z-index:1000; }
         .modal-overlay.active { display:flex; }
         .modal-box { background:#fff; border-radius:2rem; padding:2rem; max-width:380px; width:90%; box-shadow:0 20px 40px rgba(0,0,0,0.2); text-align:center; }
@@ -119,7 +119,6 @@
 <!-- 登录模态框 -->
 <div class="modal-overlay" id="loginModal">
     <div class="modal-box">
-        <!-- 第一步：选择 new friend 或 old friend -->
         <div id="choiceStep">
             <div class="choice-group">
                 <button class="choice-btn" id="choiceNew">new friend</button>
@@ -127,17 +126,14 @@
             </div>
         </div>
 
-        <!-- 第二步：表单 -->
         <div id="formStep" style="display:none;">
             <div class="form-group active" id="formContainer">
-                <!-- 新用户表单 -->
                 <div id="newUserForm">
                     <input type="text" id="loginName" placeholder="nickname" autocomplete="off">
                     <input type="text" id="loginMotto" placeholder="motto">
                     <button class="action-btn" id="formActionBtn">Let's go!</button>
                     <div class="error" id="loginError"></div>
                 </div>
-                <!-- 老用户表单 -->
                 <div id="oldUserForm" style="display:none;">
                     <input type="text" id="oldLoginName" placeholder="nickname" autocomplete="off">
                     <div id="mottoDisplayArea" style="display:none;">
@@ -158,7 +154,7 @@
 <script>
     // ---------- Supabase 配置 ----------
     const SUPABASE_URL = 'https://sxccuavdavgygfptloxv.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Y2N1YXZkYXZneWdmcHRsb3h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1OTkwMjQsImV4cCI6MjA5NzE3NTAyNH0.n6UyzqwzCZiSL6hnALH1hFF0x4oSEb89jwO-sriAOOs';
+    const SUPABASE_ANON_KEY = 'sb_publishable_P4CH0j3qtK7UpD1L9MGivw_BjmpiBjJ';
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ---------- 离线备份存储（临时用户） ----------
@@ -182,9 +178,9 @@
     };
 
     // ---------- 状态 ----------
-    let currentUser = null;      // { id, name, motto }
+    let currentUser = null;
     let tasks = [];
-    let isTemporary = true;      // 未登录
+    let isTemporary = true;
     let currentDefaultColor = '#C7B2A2';
     let sortableInstance = null;
 
@@ -198,7 +194,6 @@
     const displayName = document.getElementById('displayName');
     const displayMotto = document.getElementById('displayMotto');
 
-    // 模态框元素
     const loginModal = document.getElementById('loginModal');
     const choiceStep = document.getElementById('choiceStep');
     const formStep = document.getElementById('formStep');
@@ -218,7 +213,6 @@
     const confirmNotMe = document.getElementById('confirmNotMe');
     const oldLoginError = document.getElementById('oldLoginError');
 
-    // 保存当前搜索的用户（用于 old friend 确认）
     let searchedUser = null;
 
     // ---------- 工具 ----------
@@ -255,7 +249,6 @@
     }
 
     async function saveCloudTasks(userId, tasks) {
-        // 删除该用户所有旧任务
         const { error: delErr } = await supabase
             .from('tasks')
             .delete()
@@ -286,7 +279,6 @@
     // ---------- 核心操作 ----------
     function saveTasks() {
         if (currentUser) {
-            // 异步保存到云端，但不阻塞UI
             saveCloudTasks(currentUser.id, tasks).then(ok => {
                 if (!ok) showToast('同步云端失败', 1500);
             });
@@ -502,7 +494,6 @@
         setTimeout(() => oldLoginName.focus(), 100);
     }
 
-    // 新用户注册
     async function handleNewUserSubmit() {
         const name = loginName.value.trim();
         const motto = loginMotto.value.trim();
@@ -515,7 +506,6 @@
             return;
         }
 
-        // 检查是否已有该名称
         const { data: existing, error: checkErr } = await supabase
             .from('users')
             .select('name')
@@ -526,7 +516,6 @@
             return;
         }
 
-        // 插入新用户
         const { data: newUser, error: insertErr } = await supabase
             .from('users')
             .insert({ name, motto })
@@ -538,6 +527,7 @@
         }
         currentUser = { id: newUser.id, name: newUser.name, motto: newUser.motto };
         isTemporary = false;
+        localStorage.setItem('savedUser', JSON.stringify({ name: currentUser.name, motto: currentUser.motto }));
         closeLoginModal();
         await loadTasks();
         renderTasks();
@@ -545,7 +535,6 @@
         showToast(`欢迎，${currentUser.name}`);
     }
 
-    // 老用户搜索 nickname
     async function handleOldUserSearch() {
         const name = oldLoginName.value.trim();
         if (!name) {
@@ -567,14 +556,12 @@
             searchedUser = null;
             return;
         }
-        // 显示 motto
         foundMottoText.innerText = user.motto;
         mottoDisplayArea.style.display = 'block';
         oldLoginError.innerText = '';
         searchedUser = user;
     }
 
-    // 老用户确认 It's me!
     async function handleOldUserConfirm() {
         if (!searchedUser) {
             oldLoginError.innerText = '请先搜索用户';
@@ -582,6 +569,7 @@
         }
         currentUser = { id: searchedUser.id, name: searchedUser.name, motto: searchedUser.motto };
         isTemporary = false;
+        localStorage.setItem('savedUser', JSON.stringify({ name: currentUser.name, motto: currentUser.motto }));
         closeLoginModal();
         await loadTasks();
         renderTasks();
@@ -589,7 +577,6 @@
         showToast(`欢迎回来，${currentUser.name}`);
     }
 
-    // 老用户 Not me
     function handleOldUserNotMe() {
         oldLoginName.value = '';
         mottoDisplayArea.style.display = 'none';
@@ -629,7 +616,6 @@
 
     loginModal.addEventListener('click', (e) => { if (e.target === loginModal) closeLoginModal(); });
 
-    // 添加任务
     addBtn.addEventListener('click', () => {
         const title = taskTitleInput.value.trim();
         if (!title) { showToast('写点想做的小事吧'); return; }
@@ -640,7 +626,7 @@
         renderTasks();
         taskTitleInput.value = '';
         taskDueDateInput.value = '';
-        showToast(`添加了 “${title}”`);
+        showToast(`添加了 "${title}"`);
     });
     taskTitleInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addBtn.click(); });
 
@@ -665,20 +651,32 @@
         if (el.dataset.color === '#C7B2A2') el.classList.add('active');
     });
 
+    // ---------- 登出 ----------
+    window.logout = function() {
+        if (currentUser) {
+            saveCloudTasks(currentUser.id, tasks);
+        }
+        localStorage.removeItem('savedUser');
+        currentUser = null;
+        isTemporary = true;
+        loadTasks().then(() => {
+            renderTasks();
+            updateUI();
+            showToast('已退出');
+        });
+    };
+
     // ---------- 初始化 ----------
     async function init() {
-        // 检查临时数据过期
         if (TempDB.checkTempExpiry()) {
             tasks = [];
             TempDB.saveTempTasks(tasks);
         }
 
-        // 尝试恢复登录用户（从 localStorage 读取）
         const savedUser = localStorage.getItem('savedUser');
         if (savedUser) {
             try {
                 const parsed = JSON.parse(savedUser);
-                // 验证该用户是否仍有效
                 const { data: user, error } = await supabase
                     .from('users')
                     .select('id, name, motto')
@@ -694,7 +692,6 @@
                     showToast(`欢迎回来，${currentUser.name}`, 1500);
                 } else {
                     localStorage.removeItem('savedUser');
-                    // 转为临时
                     currentUser = null;
                     isTemporary = true;
                     await loadTasks();
@@ -710,7 +707,6 @@
                 updateUI();
             }
         } else {
-            // 临时模式
             currentUser = null;
             isTemporary = true;
             await loadTasks();
@@ -718,32 +714,6 @@
             updateUI();
         }
     }
-
-    // 登录成功后保存用户到 localStorage
-    const origClose = closeLoginModal;
-    closeLoginModal = function() {
-        if (currentUser) {
-            localStorage.setItem('savedUser', JSON.stringify({ name: currentUser.name, motto: currentUser.motto }));
-        }
-        origClose();
-    };
-
-    // 登出功能（可扩展，但未提供显式登出，用户可点击临时用户重新登录）
-    // 如要登出，可调用 logout()
-    window.logout = function() {
-        if (currentUser) {
-            // 保存当前任务到云端
-            saveCloudTasks(currentUser.id, tasks);
-        }
-        localStorage.removeItem('savedUser');
-        currentUser = null;
-        isTemporary = true;
-        loadTasks().then(() => {
-            renderTasks();
-            updateUI();
-            showToast('已退出');
-        });
-    };
 
     init();
 </script>
