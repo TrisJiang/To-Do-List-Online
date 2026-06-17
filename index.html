@@ -297,7 +297,7 @@
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return (data || []).map(t => ({
-                id: t.id,
+                id: String(t.id),
                 title: t.title,
                 completed: t.completed,
                 color: t.color,
@@ -313,26 +313,57 @@
     async function saveCloudTasks(userId, tasks) {
         if (!userId) return false;
         try {
-            // 先删除旧任务
-            const { error: delErr } = await supabase
+            // 先获取云端当前所有任务ID
+            const { data: existing } = await supabase
                 .from('tasks')
-                .delete()
+                .select('id')
                 .eq('user_id', userId);
-            if (delErr) throw delErr;
+            const existingIds = new Set((existing || []).map(t => String(t.id)));
+            const localIds = new Set(tasks.map(t => String(t.id)));
 
-            if (tasks.length === 0) return true;
-            // 批量插入
-            const rows = tasks.map(t => ({
-                user_id: userId,
-                title: t.title,
-                completed: t.completed,
-                color: t.color || '#C7B2A2',
-                due: t.due || null,
-                reminded: t.reminded || false,
-                created_at: new Date().toISOString()
-            }));
-            const { error: insErr } = await supabase.from('tasks').insert(rows);
-            if (insErr) throw insErr;
+            // 删除云端有但本地没有的任务（被删除的）
+            const toDelete = [...existingIds].filter(id => !localIds.has(id));
+            if (toDelete.length > 0) {
+                const { error: delErr } = await supabase
+                    .from('tasks')
+                    .delete()
+                    .in('id', toDelete);
+                if (delErr) throw delErr;
+            }
+
+            // 新增的任务（本地有但云端没有）
+            const toInsert = tasks.filter(t => !existingIds.has(t.id));
+            if (toInsert.length > 0) {
+                const rows = toInsert.map(t => ({
+                    id: String(t.id),
+                    user_id: userId,
+                    title: t.title,
+                    completed: t.completed,
+                    color: t.color || '#C7B2A2',
+                    due: t.due || null,
+                    reminded: t.reminded || false,
+                    created_at: new Date().toISOString()
+                }));
+                const { error: insErr } = await supabase.from('tasks').insert(rows);
+                if (insErr) throw insErr;
+            }
+
+            // 更新已存在的任务
+            const toUpdate = tasks.filter(t => existingIds.has(t.id));
+            for (const t of toUpdate) {
+                const { error: upErr } = await supabase
+                    .from('tasks')
+                    .update({
+                        title: t.title,
+                        completed: t.completed,
+                        color: t.color || '#C7B2A2',
+                        due: t.due || null,
+                        reminded: t.reminded || false
+                    })
+                    .eq('id', t.id);
+                if (upErr) throw upErr;
+            }
+
             return true;
         } catch (error) {
             console.error('同步任务失败', error);
@@ -431,12 +462,16 @@
                     }
                 } catch {}
             }
-            // 异步加载云端数据
+            // 异步加载云端数据，始终覆盖本地
             const cloudTasks = await loadCloudTasks(currentUser.id);
-            if (cloudTasks.length > 0 || tasks.length === 0) {
-                tasks = cloudTasks;
-                renderTasks();
-            }
+            tasks = cloudTasks;
+            renderTasks();
+            // 更新本地缓存为云端最新数据
+            localStorage.setItem('localTaskCache', JSON.stringify({
+                userId: currentUser.id,
+                tasks: cloudTasks,
+                updatedAt: Date.now()
+            }));
         } else {
             tasks = TempDB.getTempTasks();
             renderTasks();
@@ -752,6 +787,7 @@
             mergeTempTasks();
             renderTasks();
             updateUI();
+            setupRealtimeSync();
             showToast(`欢迎，${currentUser.name}`);
         } catch (err) {
             loginError.innerText = '注册失败: ' + err.message;
@@ -805,6 +841,7 @@
         mergeTempTasks();
         renderTasks();
         updateUI();
+        setupRealtimeSync();
         showToast(`欢迎回来，${currentUser.name}`);
     }
 
@@ -880,7 +917,7 @@
         if (!title) { showToast('写点想做的小事吧'); return; }
         let due = null;
         if (taskDueDateInput.value) { const d = new Date(taskDueDateInput.value); if (!isNaN(d.getTime())) due = d.toISOString(); }
-        tasks.unshift({ id: Date.now(), title, completed: false, color: currentDefaultColor, due, reminded: false });
+        tasks.unshift({ id: String(Date.now()), title, completed: false, color: currentDefaultColor, due, reminded: false });
         saveTasks();
         renderTasks();
         taskTitleInput.value = '';
@@ -988,6 +1025,34 @@
         }
 
         startStatusTimer();
+
+        // 实时同步：监听云端数据变化
+        setupRealtimeSync();
+
+    function setupRealtimeSync() {
+        if (currentUser && typeof supabase !== 'undefined') {
+            supabase
+                .channel('tasks-sync')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'tasks',
+                    filter: `user_id=eq.${currentUser.id}`
+                }, async () => {
+                    const cloudTasks = await loadCloudTasks(currentUser.id);
+                    if (cloudTasks.length > 0 || tasks.length === 0) {
+                        tasks = cloudTasks;
+                        renderTasks();
+                        localStorage.setItem('localTaskCache', JSON.stringify({
+                            userId: currentUser.id,
+                            tasks: cloudTasks,
+                            updatedAt: Date.now()
+                        }));
+                    }
+                })
+                .subscribe();
+        }
+    }
     }
 
     init();
