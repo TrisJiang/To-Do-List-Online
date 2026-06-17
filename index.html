@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TO-DO LIST</title>
-    <script src="https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="https://static.cloudbase.net/cloudbase-js-sdk/2.28.6/cloudbase.full.js"></script>
     <script src="https://fastly.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, 'Segoe UI', sans-serif; }
@@ -153,10 +153,27 @@
 
 <script>
 (function() {
-    // ---------- Supabase 配置 ----------
-    const SUPABASE_URL = 'https://sxccuavdavgygfptloxv.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_P4CH0j3qtK7UpD1L9MGivw_BjmpiBjJ';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // ---------- CloudBase 数据库配置 ----------
+    // 注意：Publishable Key 是前端可公开的密钥，可以安全地放在前端代码中
+    const app = cloudbase.init({
+        env: 'tris-land-d5g9lq84p361bb7c1',
+        region: 'ap-shanghai',
+        accessKey: 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjlkMWRjMzFlLWI0ZDAtNDQ4Yi1hNzZmLWIwY2M2M2Q4MTQ5OCJ9.eyJhdWQiOiJ0cmlzLWxhbmQtZDVnOWxxODRwMzYxYmI3YzEiLCJleHAiOjI1MzQwMjMwMDc5OSwiaWF0IjoxNzgxNjgyNzM5LCJhdF9oYXNoIjoiYk1RX2pQWmxTTnloZWpwWWd1cXhmQSIsInByb2plY3RfaWQiOiJ0cmlzLWxhbmQtZDVnOWxxODRwMzYxYmI3YzEiLCJtZXRhIjp7InBsYXRmb3JtIjoiQXBpS2V5In0sImFkbWluaXN0cmF0b3JfaWQiOiIyMDY3MTUwNTU2NzMwNjA5NjY2IiwidXNlcl90eXBlIjoiIiwiY2xpZW50X3R5cGUiOiJjbGllbnRfc2VydmVyIiwiaXNfc3lzdGVtX2FkbWluIjp0cnVlfQ.ffW4wVWJwctqy9mt4EdEdwH4Z6nXCPmmUi0iYl7U5oo8_Wn9zpbbxhcRMRlVByTJuKmaU_K5ttwnPnTVBbJWdCua95V5M7bmujYqEek1tPZ6cnP0RjWMp2RFJhv3yDoxZ0uqYdlKEV6TamV9HM5f64-yFXOxjTn30fAjd2agLtu5qOg_1unbx0ZCkkIJfHKDYBeujZfv1tiVGoppQCQTHMQVa1OudePtGu0k4IawwQt2YjFQGoB5W39tPFqBnar3ars_HSUVUlc-X2JznDR6CHJYOjR6D-Hd-Lp-69VnrHxz7oHhDwDMuNs2Ugn-W36f2DVpi_-Z_5EWZmF0lVO3xA'
+    });
+    const db = app.database();
+    const _ = db.command;
+
+    // 匿名登录（CloudBase 数据库操作需要先登录）
+    let authReady = false;
+    (async () => {
+        try {
+            await app.auth({ persistence: 'local' }).signInAnonymously();
+            authReady = true;
+            console.log('✅ CloudBase 数据库已连接');
+        } catch (e) {
+            console.error('CloudBase 登录失败', e);
+        }
+    })();
 
     // ---------- 离线备份存储（临时用户） ----------
     const TempDB = {
@@ -230,51 +247,52 @@
 
     // ---------- 云端操作 ----------
     async function loadCloudTasks(userId) {
-        const { data, error } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false });
-        if (error) {
+        try {
+            const result = await db.collection('tasks')
+                .where({ user_id: userId })
+                .orderBy('created_at', 'desc')
+                .get();
+            return (result.data || []).map(t => ({
+                id: t._id,
+                title: t.title,
+                completed: t.completed,
+                color: t.color,
+                due: t.due,
+                reminded: t.reminded
+            }));
+        } catch (error) {
             console.error('加载云端任务失败', error);
             return [];
         }
-        return data.map(t => ({
-            id: t.id,
-            title: t.title,
-            completed: t.completed,
-            color: t.color,
-            due: t.due,
-            reminded: t.reminded
-        }));
     }
 
     async function saveCloudTasks(userId, tasks) {
-        const { error: delErr } = await supabase
-            .from('tasks')
-            .delete()
-            .eq('user_id', userId);
-        if (delErr) {
-            console.error('删除旧任务失败', delErr);
+        try {
+            // 先删除旧任务
+            const oldResult = await db.collection('tasks').where({ user_id: userId }).get();
+            if (oldResult.data && oldResult.data.length > 0) {
+                for (const t of oldResult.data) {
+                    await db.collection('tasks').doc(t._id).remove();
+                }
+            }
+            if (tasks.length === 0) return true;
+            // 批量插入
+            for (const t of tasks) {
+                await db.collection('tasks').add({
+                    user_id: userId,
+                    title: t.title,
+                    completed: t.completed,
+                    color: t.color || '#C7B2A2',
+                    due: t.due || null,
+                    reminded: t.reminded || false,
+                    created_at: new Date()
+                });
+            }
+            return true;
+        } catch (error) {
+            console.error('同步任务失败', error);
             return false;
         }
-        if (tasks.length === 0) return true;
-        const tasksToInsert = tasks.map(t => ({
-            user_id: userId,
-            title: t.title,
-            completed: t.completed,
-            color: t.color || '#C7B2A2',
-            due: t.due || null,
-            reminded: t.reminded || false
-        }));
-        const { error: insErr } = await supabase
-            .from('tasks')
-            .insert(tasksToInsert);
-        if (insErr) {
-            console.error('插入任务失败', insErr);
-            return false;
-        }
-        return true;
     }
 
     // ---------- 核心操作 ----------
@@ -534,33 +552,27 @@
             return;
         }
 
-        const { data: existing, error: checkErr } = await supabase
-            .from('users')
-            .select('name')
-            .eq('name', name)
-            .maybeSingle();
-        if (existing) {
-            loginError.innerText = 'nickname 已存在，请直接登录';
-            return;
-        }
+        try {
+            // 检查是否已存在
+            const checkResult = await db.collection('users').where({ name }).get();
+            if (checkResult.data && checkResult.data.length > 0) {
+                loginError.innerText = 'nickname 已存在，请直接登录';
+                return;
+            }
 
-        const { data: newUser, error: insertErr } = await supabase
-            .from('users')
-            .insert({ name, motto })
-            .select()
-            .single();
-        if (insertErr) {
-            loginError.innerText = '注册失败: ' + insertErr.message;
-            return;
+            // 注册新用户
+            const addResult = await db.collection('users').add({ name, motto });
+            currentUser = { id: addResult._id, name, motto };
+            isTemporary = false;
+            localStorage.setItem('savedUser', JSON.stringify({ name, motto }));
+            closeLoginModal();
+            await loadTasks();
+            renderTasks();
+            updateUI();
+            showToast(`欢迎，${currentUser.name}`);
+        } catch (err) {
+            loginError.innerText = '注册失败: ' + err.message;
         }
-        currentUser = { id: newUser.id, name: newUser.name, motto: newUser.motto };
-        isTemporary = false;
-        localStorage.setItem('savedUser', JSON.stringify({ name: currentUser.name, motto: currentUser.motto }));
-        closeLoginModal();
-        await loadTasks();
-        renderTasks();
-        updateUI();
-        showToast(`欢迎，${currentUser.name}`);
     }
 
     async function handleOldUserSearch() {
@@ -573,21 +585,23 @@
             oldLoginError.innerText = 'nickname 不能包含空格';
             return;
         }
-        const { data: user, error } = await supabase
-            .from('users')
-            .select('id, name, motto')
-            .eq('name', name)
-            .maybeSingle();
-        if (error || !user) {
-            oldLoginError.innerText = '未找到该用户';
-            mottoDisplayArea.style.display = 'none';
+        try {
+            const result = await db.collection('users').where({ name }).get();
+            if (!result.data || result.data.length === 0) {
+                oldLoginError.innerText = '未找到该用户';
+                mottoDisplayArea.style.display = 'none';
+                searchedUser = null;
+                return;
+            }
+            const user = result.data[0];
+            foundMottoText.innerText = user.motto;
+            mottoDisplayArea.style.display = 'block';
+            oldLoginError.innerText = '';
+            searchedUser = { id: user._id, name: user.name, motto: user.motto };
+        } catch (err) {
+            oldLoginError.innerText = '搜索失败: ' + err.message;
             searchedUser = null;
-            return;
         }
-        foundMottoText.innerText = user.motto;
-        mottoDisplayArea.style.display = 'block';
-        oldLoginError.innerText = '';
-        searchedUser = user;
     }
 
     async function handleOldUserConfirm() {
@@ -696,6 +710,13 @@
 
     // ---------- 初始化 ----------
     async function init() {
+        // 等待匿名登录完成
+        let retries = 0;
+        while (!authReady && retries < 30) {
+            await new Promise(r => setTimeout(r, 500));
+            retries++;
+        }
+
         if (TempDB.checkTempExpiry()) {
             tasks = [];
             TempDB.saveTempTasks(tasks);
@@ -705,14 +726,12 @@
         if (savedUser) {
             try {
                 const parsed = JSON.parse(savedUser);
-                const { data: user, error } = await supabase
-                    .from('users')
-                    .select('id, name, motto')
-                    .eq('name', parsed.name)
-                    .eq('motto', parsed.motto)
-                    .maybeSingle();
-                if (user) {
-                    currentUser = { id: user.id, name: user.name, motto: user.motto };
+                const result = await db.collection('users')
+                    .where({ name: parsed.name, motto: parsed.motto })
+                    .get();
+                if (result.data && result.data.length > 0) {
+                    const user = result.data[0];
+                    currentUser = { id: user._id, name: user.name, motto: user.motto };
                     isTemporary = false;
                     await loadTasks();
                     renderTasks();
