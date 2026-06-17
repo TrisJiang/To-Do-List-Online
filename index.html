@@ -7,20 +7,159 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
-        /* 样式保持不变，略 */
+        * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, 'Segoe UI', sans-serif; }
+        body { background:#f2f6fc; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:2rem 1.2rem; }
+        .app-card { max-width:760px; width:100%; background:#fff; border-radius:2rem; box-shadow:0 20px 35px -12px rgba(0,0,0,0.08); overflow:hidden; }
+        .app-header { padding:1.6rem 1.8rem 0.6rem 1.8rem; border-bottom:1px solid #eff3f8; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; }
+        .app-header h1 { font-size:1.9rem; font-weight:650; background:linear-gradient(130deg,#2c3e4e,#4a627a); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .subhead { font-size:0.78rem; color:#64748b; margin-top:0.3rem; letter-spacing:0.2px; cursor:pointer; }
+        .subhead span { font-weight:600; color:#2c3e4e; padding:0.1rem 0.4rem; border-radius:0.5rem; transition:0.15s; }
+        .subhead span:hover { background:#eef3f8; }
+        .todo-form { padding:1rem 1.8rem; display:flex; gap:0.75rem; border-bottom:1px solid #eff3f8; flex-wrap:wrap; }
+        .task-input-wrapper { flex:3; min-width:150px; }
+        .task-input-wrapper input { width:100%; padding:0.7rem 1rem; border-radius:2rem; border:1.5px solid #e2edf7; font-size:0.9rem; }
+        .due-date-wrapper { flex:1; min-width:120px; }
+        .due-date-wrapper input { width:100%; padding:0.7rem 0.7rem; border-radius:2rem; border:1.5px solid #e2edf7; font-size:0.8rem; }
+        .add-circle { flex-shrink:0; width:44px; height:44px; background:#7C9E8E; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:0.2s; }
+        .add-circle:hover { background:#6e8e7f; transform:scale(1.02); }
+        .add-circle span { color:#fff; font-size:1.7rem; font-weight:400; line-height:1; }
+        .action-bar { padding:0.6rem 1.8rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem; border-bottom:1px solid #eff3f8; }
+        .delete-done-btn { background:#f1f5f9; border:none; padding:0.4rem 1.2rem; border-radius:2rem; font-size:0.8rem; font-weight:500; color:#4b556b; cursor:pointer; }
+        .delete-done-btn:hover { background:#fee2e2; color:#c2410c; }
+        .color-palette { display:flex; gap:0.7rem; align-items:center; }
+        .color-swatch { width:28px; height:28px; border-radius:50%; cursor:pointer; border:2px solid white; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:0.1s; }
+        .color-swatch.active { border-color:#1e293b; transform:scale(1.08); }
+        .color-swatch:hover { transform:scale(1.05); }
+        .todo-container { padding:1rem 1.5rem 0.6rem 1.5rem; }
+        .todo-list { list-style:none; display:flex; flex-direction:column; gap:0.7rem; }
+        .todo-item { background:#fff; border-radius:1.2rem; padding:0.75rem 1rem; border-left:6px solid; box-shadow:0 2px 8px rgba(0,0,0,0.03); display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; cursor:grab; }
+        .todo-item:active { cursor:grabbing; }
+        .sortable-drag { opacity:0.3; background:#f1f5f9; }
+        .todo-check input { width:1.25rem; height:1.25rem; cursor:pointer; accent-color:#9ca3af; }
+        .todo-title { flex:3; font-size:0.95rem; font-weight:500; color:#0a1c2f; word-break:break-word; padding:0.2rem 0; cursor:text; }
+        .todo-title:hover { background:#f8fafc; }
+        .completed-task .todo-title { text-decoration:line-through; color:#94a3b8; }
+        .due-and-delete { display:flex; align-items:center; gap:0.6rem; flex-shrink:0; }
+        .todo-due { font-size:0.7rem; background:#f1f5f9; padding:0.3rem 0.8rem; border-radius:2rem; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; font-weight:500; cursor:pointer; }
+        .todo-due:hover { background:#e6edf5; }
+        .due-urgent { background:#f5e0e0; color:#ac6f6f; }
+        .due-soon { background:#f5ede0; color:#bc8f6a; }
+        .due-normal { background:#e2edf0; color:#5f7f7a; }
+        .delete-simple { background:transparent; border:none; font-size:1.2rem; cursor:pointer; color:#8b9abb; padding:0.2rem 0.3rem; border-radius:2rem; }
+        .delete-simple:hover { background:#fee9e6; color:#e5483b; }
+        .stats-wrapper { padding:0.8rem 1.5rem 1.2rem 1.5rem; border-top:1px solid #eff3f8; }
+        .stats-box { background:#f8fafd; border-radius:2rem; padding:0.6rem 1rem; display:flex; justify-content:center; gap:1.8rem; font-size:0.8rem; font-weight:500; width:100%; flex-wrap:wrap; }
+        .stat-number { font-weight:700; margin-right:4px; color:#5f7f7a; background:#eef2f9; display:inline-block; min-width:28px; text-align:center; border-radius:20px; padding:0 4px; }
+        .empty-message { text-align:center; padding:2rem; color:#8ba0bc; background:#fafdff; border-radius:1.5rem; margin:0.5rem 0; }
+
+        /* 模态框 - 极简 */
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.3); display:none; align-items:center; justify-content:center; z-index:1000; }
+        .modal-overlay.active { display:flex; }
+        .modal-box { background:#fff; border-radius:2rem; padding:2rem; max-width:380px; width:90%; box-shadow:0 20px 40px rgba(0,0,0,0.2); text-align:center; }
+        .modal-box .choice-group { display:flex; flex-direction:column; gap:1rem; margin:1.5rem 0; }
+        .modal-box .choice-btn { padding:0.8rem; border:none; border-radius:2rem; background:#7C9E8E; color:#fff; font-size:1rem; font-weight:500; cursor:pointer; transition:0.2s; }
+        .modal-box .choice-btn:hover { background:#6e8e7f; }
+        .modal-box .choice-btn.secondary { background:#d1d9e0; color:#333; }
+        .modal-box .choice-btn.secondary:hover { background:#c0cbd6; }
+
+        .modal-box .form-group { display:none; flex-direction:column; gap:0.8rem; margin-top:1rem; }
+        .modal-box .form-group.active { display:flex; }
+        .modal-box .form-group input { width:100%; padding:0.7rem; border-radius:2rem; border:1px solid #ddd; font-size:0.9rem; }
+        .modal-box .form-group .action-btn { padding:0.7rem; border:none; border-radius:2rem; background:#7C9E8E; color:#fff; font-size:1rem; font-weight:500; cursor:pointer; }
+        .modal-box .form-group .action-btn:hover { background:#6e8e7f; }
+        .modal-box .form-group .back-btn { background:none; border:none; color:#94a3b8; cursor:pointer; font-size:0.8rem; margin-top:0.3rem; }
+        .modal-box .error { color:#c2410c; font-size:0.8rem; margin-top:0.3rem; }
+        .modal-box .motto-display { background:#f1f5f9; padding:0.5rem; border-radius:0.5rem; margin:0.5rem 0; font-weight:500; }
+        .modal-box .confirm-group { display:flex; gap:1rem; justify-content:center; margin-top:0.5rem; }
+        .modal-box .confirm-btn { padding:0.6rem 1.5rem; border:none; border-radius:2rem; background:#7C9E8E; color:#fff; font-weight:500; cursor:pointer; }
+        .modal-box .confirm-btn.secondary { background:#d1d9e0; color:#333; }
+        .modal-box .confirm-btn:hover { opacity:0.85; }
     </style>
 </head>
 <body>
-<!-- 页面结构保持不变 -->
 <div class="app-card">
-    <!-- ... 与之前一致，略 -->
+    <div class="app-header">
+        <div>
+            <h1>TO-DO LIST</h1>
+            <div class="subhead">待办清单 · <span id="displayName">临时用户</span> · <span id="displayMotto">活在当下</span></div>
+        </div>
+    </div>
+
+    <div class="todo-form">
+        <div class="task-input-wrapper"><input type="text" id="taskTitle" placeholder="读本书，看舞台剧，看电影，多喝水..." autocomplete="off"></div>
+        <div class="due-date-wrapper"><input type="datetime-local" id="taskDueDate"></div>
+        <div class="add-circle" id="addTaskBtn"><span>✓</span></div>
+    </div>
+
+    <div class="action-bar">
+        <button class="delete-done-btn" id="clearCompletedBtn">删除已完成</button>
+        <div class="color-palette" id="globalColorPicker">
+            <div class="color-swatch" data-color="#C7B2A2" style="background:#C7B2A2;"></div>
+            <div class="color-swatch" data-color="#C9A9A6" style="background:#C9A9A6;"></div>
+            <div class="color-swatch" data-color="#8C9E9E" style="background:#8C9E9E;"></div>
+            <div class="color-swatch" data-color="#B27D6D" style="background:#B27D6D;"></div>
+            <div class="color-swatch" data-color="#B8A89A" style="background:#B8A89A;"></div>
+        </div>
+    </div>
+
+    <div class="todo-container">
+        <ul class="todo-list" id="todoList"></ul>
+        <div id="emptyPlaceholder" class="empty-message" style="display:none;">清单空空，添加一点想做的小事吧</div>
+    </div>
+
+    <div class="stats-wrapper">
+        <div class="stats-box">
+            <div class="stat-item"><span class="stat-number" id="completedCount">0</span> 已完成</div>
+            <div class="stat-item"><span class="stat-number" id="expiredCount">0</span> 已到期</div>
+            <div class="stat-item"><span class="stat-number" id="activeCount">0</span> 进行中</div>
+        </div>
+    </div>
+</div>
+
+<!-- 登录模态框 -->
+<div class="modal-overlay" id="loginModal">
+    <div class="modal-box">
+        <!-- 第一步：选择 new friend 或 old friend -->
+        <div id="choiceStep">
+            <div class="choice-group">
+                <button class="choice-btn" id="choiceNew">new friend</button>
+                <button class="choice-btn secondary" id="choiceOld">old friend</button>
+            </div>
+        </div>
+
+        <!-- 第二步：表单 -->
+        <div id="formStep" style="display:none;">
+            <div class="form-group active" id="formContainer">
+                <!-- 新用户表单 -->
+                <div id="newUserForm">
+                    <input type="text" id="loginName" placeholder="nickname" autocomplete="off">
+                    <input type="text" id="loginMotto" placeholder="motto">
+                    <button class="action-btn" id="formActionBtn">Let's go!</button>
+                    <div class="error" id="loginError"></div>
+                </div>
+                <!-- 老用户表单 -->
+                <div id="oldUserForm" style="display:none;">
+                    <input type="text" id="oldLoginName" placeholder="nickname" autocomplete="off">
+                    <div id="mottoDisplayArea" style="display:none;">
+                        <div class="motto-display" id="foundMottoText"></div>
+                        <div class="confirm-group">
+                            <button class="confirm-btn" id="confirmItIsMe">It's me!</button>
+                            <button class="confirm-btn secondary" id="confirmNotMe">Not me</button>
+                        </div>
+                    </div>
+                    <div class="error" id="oldLoginError"></div>
+                </div>
+                <button class="back-btn" id="formBackBtn">返回</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
     // ---------- Supabase 配置 ----------
     const SUPABASE_URL = 'https://sxccuavdavgygfptloxv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_P4CH0j3qtK7UpD1L9MGivw_BjmpiBjJ';
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ---------- 离线备份存储（临时用户） ----------
     const TempDB = {
@@ -43,13 +182,13 @@
     };
 
     // ---------- 状态 ----------
-    let currentUser = null;
+    let currentUser = null;      // { id, name, motto }
     let tasks = [];
-    let isTemporary = true;
+    let isTemporary = true;      // 未登录
     let currentDefaultColor = '#C7B2A2';
     let sortableInstance = null;
 
-    // DOM 引用（保持不变）
+    // DOM
     const todoListEl = document.getElementById('todoList');
     const emptyPlaceholder = document.getElementById('emptyPlaceholder');
     const taskTitleInput = document.getElementById('taskTitle');
@@ -59,6 +198,7 @@
     const displayName = document.getElementById('displayName');
     const displayMotto = document.getElementById('displayMotto');
 
+    // 模态框元素
     const loginModal = document.getElementById('loginModal');
     const choiceStep = document.getElementById('choiceStep');
     const formStep = document.getElementById('formStep');
@@ -78,9 +218,10 @@
     const confirmNotMe = document.getElementById('confirmNotMe');
     const oldLoginError = document.getElementById('oldLoginError');
 
+    // 保存当前搜索的用户（用于 old friend 确认）
     let searchedUser = null;
 
-    // ---------- 工具函数 ----------
+    // ---------- 工具 ----------
     function showToast(msg, dur=1800) {
         let t = document.querySelector('.toast-msg');
         if(t) t.remove();
@@ -92,9 +233,9 @@
         setTimeout(()=>d.remove(), dur);
     }
 
-    // ---------- 云端操作（所有 supabaseClient 已替换） ----------
+    // ---------- 云端操作 ----------
     async function loadCloudTasks(userId) {
-        const { data, error } = await supabaseClient
+        const { data, error } = await supabase
             .from('tasks')
             .select('*')
             .eq('user_id', userId)
@@ -114,7 +255,8 @@
     }
 
     async function saveCloudTasks(userId, tasks) {
-        const { error: delErr } = await supabaseClient
+        // 删除该用户所有旧任务
+        const { error: delErr } = await supabase
             .from('tasks')
             .delete()
             .eq('user_id', userId);
@@ -131,7 +273,7 @@
             due: t.due || null,
             reminded: t.reminded || false
         }));
-        const { error: insErr } = await supabaseClient
+        const { error: insErr } = await supabase
             .from('tasks')
             .insert(tasksToInsert);
         if (insErr) {
@@ -144,6 +286,7 @@
     // ---------- 核心操作 ----------
     function saveTasks() {
         if (currentUser) {
+            // 异步保存到云端，但不阻塞UI
             saveCloudTasks(currentUser.id, tasks).then(ok => {
                 if (!ok) showToast('同步云端失败', 1500);
             });
@@ -359,6 +502,7 @@
         setTimeout(() => oldLoginName.focus(), 100);
     }
 
+    // 新用户注册
     async function handleNewUserSubmit() {
         const name = loginName.value.trim();
         const motto = loginMotto.value.trim();
@@ -371,7 +515,8 @@
             return;
         }
 
-        const { data: existing, error: checkErr } = await supabaseClient
+        // 检查是否已有该名称
+        const { data: existing, error: checkErr } = await supabase
             .from('users')
             .select('name')
             .eq('name', name)
@@ -381,7 +526,8 @@
             return;
         }
 
-        const { data: newUser, error: insertErr } = await supabaseClient
+        // 插入新用户
+        const { data: newUser, error: insertErr } = await supabase
             .from('users')
             .insert({ name, motto })
             .select()
@@ -399,6 +545,7 @@
         showToast(`欢迎，${currentUser.name}`);
     }
 
+    // 老用户搜索 nickname
     async function handleOldUserSearch() {
         const name = oldLoginName.value.trim();
         if (!name) {
@@ -409,7 +556,7 @@
             oldLoginError.innerText = 'nickname 不能包含空格';
             return;
         }
-        const { data: user, error } = await supabaseClient
+        const { data: user, error } = await supabase
             .from('users')
             .select('id, name, motto')
             .eq('name', name)
@@ -420,12 +567,14 @@
             searchedUser = null;
             return;
         }
+        // 显示 motto
         foundMottoText.innerText = user.motto;
         mottoDisplayArea.style.display = 'block';
         oldLoginError.innerText = '';
         searchedUser = user;
     }
 
+    // 老用户确认 It's me!
     async function handleOldUserConfirm() {
         if (!searchedUser) {
             oldLoginError.innerText = '请先搜索用户';
@@ -440,6 +589,7 @@
         showToast(`欢迎回来，${currentUser.name}`);
     }
 
+    // 老用户 Not me
     function handleOldUserNotMe() {
         oldLoginName.value = '';
         mottoDisplayArea.style.display = 'none';
@@ -479,6 +629,7 @@
 
     loginModal.addEventListener('click', (e) => { if (e.target === loginModal) closeLoginModal(); });
 
+    // 添加任务
     addBtn.addEventListener('click', () => {
         const title = taskTitleInput.value.trim();
         if (!title) { showToast('写点想做的小事吧'); return; }
@@ -514,17 +665,21 @@
         if (el.dataset.color === '#C7B2A2') el.classList.add('active');
     });
 
+    // ---------- 初始化 ----------
     async function init() {
+        // 检查临时数据过期
         if (TempDB.checkTempExpiry()) {
             tasks = [];
             TempDB.saveTempTasks(tasks);
         }
 
+        // 尝试恢复登录用户（从 localStorage 读取）
         const savedUser = localStorage.getItem('savedUser');
         if (savedUser) {
             try {
                 const parsed = JSON.parse(savedUser);
-                const { data: user, error } = await supabaseClient
+                // 验证该用户是否仍有效
+                const { data: user, error } = await supabase
                     .from('users')
                     .select('id, name, motto')
                     .eq('name', parsed.name)
@@ -539,6 +694,7 @@
                     showToast(`欢迎回来，${currentUser.name}`, 1500);
                 } else {
                     localStorage.removeItem('savedUser');
+                    // 转为临时
                     currentUser = null;
                     isTemporary = true;
                     await loadTasks();
@@ -554,6 +710,7 @@
                 updateUI();
             }
         } else {
+            // 临时模式
             currentUser = null;
             isTemporary = true;
             await loadTasks();
@@ -562,6 +719,7 @@
         }
     }
 
+    // 登录成功后保存用户到 localStorage
     const origClose = closeLoginModal;
     closeLoginModal = function() {
         if (currentUser) {
@@ -570,8 +728,11 @@
         origClose();
     };
 
+    // 登出功能（可扩展，但未提供显式登出，用户可点击临时用户重新登录）
+    // 如要登出，可调用 logout()
     window.logout = function() {
         if (currentUser) {
+            // 保存当前任务到云端
             saveCloudTasks(currentUser.id, tasks);
         }
         localStorage.removeItem('savedUser');
