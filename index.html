@@ -351,9 +351,11 @@
         try {
             // 1. 拉取云端完整数据（不只是ID）
             const cloudTasks = await loadCloudTasks(userId);
+            console.log('[saveCloudTasks] 云端任务数:', cloudTasks.length, '本地任务数:', tasks.length);
 
             // 2. 合并本地和云端，按标题去重
             const merged = dedupeByTitle([...tasks, ...cloudTasks]);
+            console.log('[saveCloudTasks] 去重后:', merged.length);
 
             // 3. 找出需要删除的（在云端但不在合并结果中）
             const mergedIds = new Set(merged.map(t => String(t.id)));
@@ -366,6 +368,8 @@
             // 5. 找出需要更新的（两边都有，内容可能变了）
             const toUpdate = merged.filter(t => cloudIds.has(String(t.id)));
 
+            console.log('[saveCloudTasks] 删除:', toDelete.length, '新增:', toInsert.length, '更新:', toUpdate.length);
+
             // 执行删除
             if (toDelete.length > 0) {
                 const ids = toDelete.map(t => String(t.id));
@@ -373,7 +377,7 @@
                     .from('tasks')
                     .delete()
                     .in('id', ids);
-                if (delErr) throw delErr;
+                if (delErr) { console.error('[saveCloudTasks] 删除失败:', delErr); throw delErr; }
             }
 
             // 执行新增
@@ -388,7 +392,9 @@
                     reminded: t.reminded || false,
                     updated_at: t.updated_at || new Date().toISOString()
                 }));
-                const { error: insErr } = await supabase.from('tasks').insert(rows);
+                console.log('[saveCloudTasks] 准备插入:', JSON.stringify(rows));
+                const { data: insData, error: insErr } = await supabase.from('tasks').insert(rows).select();
+                console.log('[saveCloudTasks] 插入结果:', insData, '错误:', insErr);
                 if (insErr) throw insErr;
             }
 
