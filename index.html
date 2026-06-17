@@ -278,23 +278,50 @@
     }
 
     // ---------- 核心操作 ----------
+    let syncTimer = null;
     function saveTasks() {
+        // 始终先存本地，保证操作即时响应
+        localStorage.setItem('localTaskCache', JSON.stringify({
+            userId: currentUser ? currentUser.id : null,
+            tasks: tasks,
+            updatedAt: Date.now()
+        }));
+        TempDB.saveTempTasks(tasks);
+
         if (currentUser) {
-            saveCloudTasks(currentUser.id, tasks).then(ok => {
-                if (!ok) showToast('同步云端失败', 1500);
-            });
-        } else {
-            TempDB.saveTempTasks(tasks);
+            // 防抖：300ms 内多次操作只发一次云端请求
+            clearTimeout(syncTimer);
+            syncTimer = setTimeout(() => {
+                saveCloudTasks(currentUser.id, tasks).then(ok => {
+                    if (!ok) showToast('同步云端失败', 1500);
+                });
+            }, 300);
         }
     }
 
     async function loadTasks() {
         if (currentUser) {
-            tasks = await loadCloudTasks(currentUser.id);
+            // 优先用本地缓存快速渲染
+            const cache = localStorage.getItem('localTaskCache');
+            if (cache) {
+                try {
+                    const cached = JSON.parse(cache);
+                    if (cached.userId === currentUser.id && cached.tasks) {
+                        tasks = cached.tasks;
+                        renderTasks();
+                    }
+                } catch {}
+            }
+            // 异步加载云端数据
+            const cloudTasks = await loadCloudTasks(currentUser.id);
+            if (cloudTasks.length > 0 || tasks.length === 0) {
+                tasks = cloudTasks;
+                renderTasks();
+            }
         } else {
             tasks = TempDB.getTempTasks();
+            renderTasks();
         }
-        renderTasks();
     }
 
     function updateUI() {
