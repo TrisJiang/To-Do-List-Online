@@ -27,7 +27,7 @@
         body { background:#f2f6fc; height:100vh; overflow:hidden; display:flex; align-items:center; justify-content:center; padding:1.5rem 1rem; }
         .app-card { max-width:760px; width:100%; height:100%; max-height:100%; background:#fff; border-radius:2rem; box-shadow:0 20px 35px -12px rgba(0,0,0,0.08); overflow:hidden; display:flex; flex-direction:column; }
         .app-header { padding:1.6rem 1.8rem 0.6rem 1.8rem; border-bottom:1px solid #eff3f8; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; flex-shrink:0; }
-        .app-header h1 { font-size:1.9rem; font-weight:650; background:linear-gradient(130deg,#2c3e4e,#4a627a); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .app-header h1 { font-size:1.9rem; font-weight:650; background:linear-gradient(130deg,#2c3e4e,#4a627a); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
         .subhead { font-size:0.78rem; color:#64748b; margin-top:0.3rem; letter-spacing:0.2px; cursor:pointer; }
         .subhead span { font-weight:600; color:#2c3e4e; padding:0.1rem 0.4rem; border-radius:0.5rem; transition:0.15s; }
         .subhead span:hover { background:#eef3f8; }
@@ -293,46 +293,90 @@
             const { data, error } = await supabase
                 .from('tasks')
                 .select('*')
-                .eq('user_id', userId)
-                .order('created_at', { ascending: false });
+                .eq('user_id', userId);
             if (error) throw error;
-            return (data || []).map(t => ({
+            const tasks = (data || []).map(t => ({
                 id: String(t.id),
                 title: t.title,
                 completed: t.completed,
                 color: t.color,
                 due: t.due,
-                reminded: t.reminded
+                reminded: t.reminded,
+                created_at: t.created_at,
+                updated_at: t.updated_at || t.created_at
             }));
+            // 去重后返回
+            return dedupeByTitle(tasks);
         } catch (error) {
             console.error('加载云端任务失败', error);
             return [];
         }
     }
 
+    // 按标题去重：若 A 标题完整包含 B 标题，保留 A（信息更全），删除 B
+    function dedupeByTitle(taskList) {
+        if (taskList.length <= 1) return taskList;
+        const result = [...taskList];
+        const toRemove = new Set();
+
+        for (let i = 0; i < result.length; i++) {
+            if (toRemove.has(i)) continue;
+            for (let j = i + 1; j < result.length; j++) {
+                if (toRemove.has(j)) continue;
+                const a = result[i].title.trim();
+                const b = result[j].title.trim();
+                if (a === b || a.includes(b) || b.includes(a)) {
+                    // 按修改时间保留最新的（优先 updated_at，fallback 到 created_at）
+                    const getTime = (t) => {
+                        const ts = t.updated_at || t.created_at;
+                        return ts ? new Date(ts).getTime() : 0;
+                    };
+                    const timeA = getTime(result[i]);
+                    const timeB = getTime(result[j]);
+                    if (timeA >= timeB) {
+                        toRemove.add(j);
+                    } else {
+                        toRemove.add(i);
+                        break; // i 被删了，跳过后面的 j 比较
+                    }
+                }
+            }
+        }
+
+        return result.filter((_, idx) => !toRemove.has(idx));
+    }
+
     async function saveCloudTasks(userId, tasks) {
         if (!userId) return false;
         try {
-            // 先获取云端当前所有任务ID
-            const { data: existing } = await supabase
-                .from('tasks')
-                .select('id')
-                .eq('user_id', userId);
-            const existingIds = new Set((existing || []).map(t => String(t.id)));
-            const localIds = new Set(tasks.map(t => String(t.id)));
+            // 1. 拉取云端完整数据（不只是ID）
+            const cloudTasks = await loadCloudTasks(userId);
 
-            // 删除云端有但本地没有的任务（被删除的）
-            const toDelete = [...existingIds].filter(id => !localIds.has(id));
+            // 2. 合并本地和云端，按标题去重
+            const merged = dedupeByTitle([...tasks, ...cloudTasks]);
+
+            // 3. 找出需要删除的（在云端但不在合并结果中）
+            const mergedIds = new Set(merged.map(t => String(t.id)));
+            const toDelete = cloudTasks.filter(t => !mergedIds.has(String(t.id)));
+
+            // 4. 找出需要新增的（在合并结果中但不在云端）
+            const cloudIds = new Set(cloudTasks.map(t => String(t.id)));
+            const toInsert = merged.filter(t => !cloudIds.has(String(t.id)));
+
+            // 5. 找出需要更新的（两边都有，内容可能变了）
+            const toUpdate = merged.filter(t => cloudIds.has(String(t.id)));
+
+            // 执行删除
             if (toDelete.length > 0) {
+                const ids = toDelete.map(t => String(t.id));
                 const { error: delErr } = await supabase
                     .from('tasks')
                     .delete()
-                    .in('id', toDelete);
+                    .in('id', ids);
                 if (delErr) throw delErr;
             }
 
-            // 新增的任务（本地有但云端没有）
-            const toInsert = tasks.filter(t => !existingIds.has(t.id));
+            // 执行新增
             if (toInsert.length > 0) {
                 const rows = toInsert.map(t => ({
                     id: String(t.id),
@@ -342,14 +386,13 @@
                     color: t.color || '#C7B2A2',
                     due: t.due || null,
                     reminded: t.reminded || false,
-                    created_at: new Date().toISOString()
+                    updated_at: t.updated_at || new Date().toISOString()
                 }));
                 const { error: insErr } = await supabase.from('tasks').insert(rows);
                 if (insErr) throw insErr;
             }
 
-            // 更新已存在的任务
-            const toUpdate = tasks.filter(t => existingIds.has(t.id));
+            // 执行更新
             for (const t of toUpdate) {
                 const { error: upErr } = await supabase
                     .from('tasks')
@@ -358,16 +401,35 @@
                         completed: t.completed,
                         color: t.color || '#C7B2A2',
                         due: t.due || null,
-                        reminded: t.reminded || false
+                        reminded: t.reminded || false,
+                        updated_at: new Date().toISOString()
                     })
-                    .eq('id', t.id);
+                    .eq('id', String(t.id));
                 if (upErr) throw upErr;
             }
+
+            // 6. 同步本地 tasks 变量（用合并去重后的结果）
+            tasks.length = 0;
+            tasks.push(...merged);
 
             return true;
         } catch (error) {
             console.error('同步任务失败', error);
+            showToast('同步失败: ' + (error.message || '未知错误'), 3000);
             return false;
+        }
+    }
+
+    async function deleteCloudTask(taskId) {
+        if (!currentUser) return;
+        try {
+            const { error } = await supabase
+                .from('tasks')
+                .delete()
+                .eq('id', String(taskId));
+            if (error) console.error('删除云端任务失败', error);
+        } catch (e) {
+            console.error('删除云端任务失败', e);
         }
     }
 
@@ -389,7 +451,17 @@
             clearTimeout(syncTimer);
             syncTimer = setTimeout(() => {
                 saveCloudTasks(currentUser.id, tasks).then(ok => {
-                    if (!ok) showToast('同步云端失败', 1500);
+                    if (ok) {
+                        // saveCloudTasks 可能去重修改了 tasks，更新缓存和UI
+                        localStorage.setItem('localTaskCache', JSON.stringify({
+                            userId: currentUser.id,
+                            tasks: tasks,
+                            updatedAt: Date.now()
+                        }));
+                        renderTasks();
+                    } else {
+                        showToast('同步云端失败', 1500);
+                    }
                 });
             }, 300);
         }
@@ -502,7 +574,7 @@
         if (!dueISO) return '';
         const d = new Date(dueISO);
         if (isNaN(d.getTime())) return '无效';
-        return `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
     }
     function getDueClass(dueISO) {
         if (!dueISO) return '';
@@ -629,7 +701,10 @@
             deleteBtn.className = 'delete-simple';
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                tasks.splice(index, 1);
+                const removed = tasks.splice(index, 1);
+                if (removed.length > 0 && currentUser) {
+                    deleteCloudTask(removed[0].id);
+                }
                 saveTasks();
                 renderTasks();
                 showToast('已删除', 800);
@@ -929,6 +1004,9 @@
     clearCompletedBtn.addEventListener('click', () => {
         const undone = tasks.filter(t => !t.completed);
         if (undone.length === tasks.length) { showToast('没有已完成的任务'); return; }
+        // 删除云端已完成的任务
+        const completed = tasks.filter(t => t.completed);
+        completed.forEach(t => { if (currentUser) deleteCloudTask(t.id); });
         tasks = undone;
         saveTasks();
         renderTasks();
@@ -1040,15 +1118,13 @@
                     filter: `user_id=eq.${currentUser.id}`
                 }, async () => {
                     const cloudTasks = await loadCloudTasks(currentUser.id);
-                    if (cloudTasks.length > 0 || tasks.length === 0) {
-                        tasks = cloudTasks;
-                        renderTasks();
-                        localStorage.setItem('localTaskCache', JSON.stringify({
-                            userId: currentUser.id,
-                            tasks: cloudTasks,
-                            updatedAt: Date.now()
-                        }));
-                    }
+                    tasks = cloudTasks;
+                    renderTasks();
+                    localStorage.setItem('localTaskCache', JSON.stringify({
+                        userId: currentUser.id,
+                        tasks: cloudTasks,
+                        updatedAt: Date.now()
+                    }));
                 })
                 .subscribe();
         }
