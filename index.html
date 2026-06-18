@@ -71,7 +71,7 @@
         .todo-title:hover { background:#f8fafc; }
         .completed-task .todo-title { text-decoration:line-through; color:#94a3b8; }
         /* 原地编辑输入框 —— 与 .todo-title 尺寸完全一致 */
-        .inline-edit-input { flex:0 1 auto; max-width:60%; font-size:0.95rem; font-weight:500; font-family:inherit; color:#0a1c2f; padding:0.2rem 0; margin:0; border:none; background:transparent; outline:none; min-width:0; resize:none; overflow:hidden; overflow-wrap:break-word; word-break:break-word; border-radius:0; line-height:1.45; }
+        .inline-edit-input { flex:0 0 auto; font-size:0.95rem; font-weight:500; font-family:inherit; color:#0a1c2f; padding:0.2rem 0; margin:0; border:none; background:transparent; outline:none; min-width:0; resize:none; overflow:hidden; overflow-wrap:break-word; word-break:break-word; border-radius:0; line-height:1.45; }
         .due-and-delete { display:flex; align-items:center; gap:0.6rem; flex-shrink:0; margin-left:auto; }
         .todo-due { font-size:0.7rem; background:#f1f5f9; padding:0.3rem 0.8rem; border-radius:2rem; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; font-weight:500; cursor:pointer; }
         .todo-due:hover { background:#e6edf5; }
@@ -201,7 +201,7 @@
     </div>
 
     <div class="todo-form">
-        <div class="task-input-wrapper"><input type="text" id="taskTitle" placeholder="读本书，看舞台剧，看电影，多喝水..." autocomplete="off"></div>
+        <div class="task-input-wrapper"><input type="text" id="taskTitle" placeholder="读本书，看舞台剧，看电影，多喝水..." autocomplete="off" maxlength="50"></div>
         <div class="due-date-wrapper"><input type="datetime-local" id="taskDueDate"></div>
         <div class="add-circle" id="addTaskBtn"><span>✓</span></div>
     </div>
@@ -798,8 +798,8 @@
                 input.value = task.title;
                 input.className = 'inline-edit-input';
                 input.style.width = titleWidth + 'px';
-                input.style.flex = 'none';
                 input.rows = 1;
+                input.maxLength = 50;
                 const finishEdit = () => {
                     const newTitle = input.value.trim();
                     if (newTitle && newTitle !== oldTitle) {
@@ -811,11 +811,6 @@
                 const autoResize = () => {
                     input.style.height = 'auto';
                     input.style.height = input.scrollHeight + 'px';
-                    // 保持宽度不超出
-                    if (input.scrollWidth > titleWidth) {
-                        input.style.width = 'auto';
-                        input.style.width = Math.min(input.scrollWidth + 4, input.parentElement.clientWidth * 0.6) + 'px';
-                    }
                 };
                 input.addEventListener('input', autoResize);
                 input.addEventListener('blur', finishEdit);
