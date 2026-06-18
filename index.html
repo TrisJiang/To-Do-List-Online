@@ -67,13 +67,11 @@
         .todo-title { flex:3; font-size:0.95rem; font-weight:500; color:#0a1c2f; word-break:break-word; padding:0.2rem 0; cursor:text; }
         .todo-title:hover { background:#f8fafc; }
         .completed-task .todo-title { text-decoration:line-through; color:#94a3b8; }
-        /* 原地编辑输入框 */
         .inline-edit-input { flex:3; font-size:0.95rem; font-weight:500; color:#0a1c2f; border:1.5px solid #7C9E8E; border-radius:0.5rem; padding:0.25rem 0.5rem; background:#f8fdfa; outline:none; min-width:100px; }
         .inline-edit-input:focus { border-color:#5a7d6a; box-shadow:0 0 0 2px rgba(124,158,142,0.2); }
         .due-and-delete { display:flex; align-items:center; gap:0.6rem; flex-shrink:0; }
         .todo-due { font-size:0.7rem; background:#f1f5f9; padding:0.3rem 0.8rem; border-radius:2rem; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; font-weight:500; cursor:pointer; }
         .todo-due:hover { background:#e6edf5; }
-        /* 原地编辑日期输入框 */
         .inline-due-input { font-size:0.7rem; padding:0.3rem 0.5rem; border-radius:0.5rem; border:1.5px solid #7C9E8E; background:#f8fdfa; outline:none; width:130px; min-width:100px; }
         .inline-due-input:focus { border-color:#5a7d6a; box-shadow:0 0 0 2px rgba(124,158,142,0.2); }
         .due-urgent { background:#f5e0e0; color:#ac6f6f; }
@@ -85,8 +83,6 @@
         .stats-box { background:#f8fafd; border-radius:2rem; padding:0.6rem 1rem; display:flex; justify-content:center; gap:1.8rem; font-size:0.8rem; font-weight:500; width:100%; flex-wrap:wrap; }
         .stat-number { font-weight:700; margin-right:4px; color:#5f7f7a; background:#eef2f9; display:inline-block; min-width:28px; text-align:center; border-radius:20px; padding:0 4px; }
         .empty-message { text-align:center; padding:2rem; color:#8ba0bc; background:#fafdff; border-radius:1.5rem; margin:0.5rem 0; }
-
-        /* 模态框 */
         .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.3); display:none; align-items:center; justify-content:center; z-index:1000; }
         .modal-overlay.active { display:flex; }
         .modal-box { background:#fff; border-radius:2rem; padding:2rem; max-width:380px; width:90%; box-shadow:0 20px 40px rgba(0,0,0,0.2); text-align:center; }
@@ -95,7 +91,6 @@
         .modal-box .choice-btn:hover { background:#6e8e7f; }
         .modal-box .choice-btn.secondary { background:#d1d9e0; color:#333; }
         .modal-box .choice-btn.secondary:hover { background:#c0cbd6; }
-
         .modal-box .form-group { display:none; flex-direction:column; gap:0.8rem; margin-top:1rem; }
         .modal-box .form-group.active { display:flex; }
         .modal-box .form-group input { width:100%; padding:0.7rem; border-radius:2rem; border:1px solid #ddd; font-size:0.9rem; }
@@ -108,8 +103,6 @@
         .modal-box .confirm-btn { padding:0.6rem 1.5rem; border:none; border-radius:2rem; background:#7C9E8E; color:#fff; font-weight:500; cursor:pointer; }
         .modal-box .confirm-btn.secondary { background:#d1d9e0; color:#333; }
         .modal-box .confirm-btn:hover { opacity:0.85; }
-
-        /* 移动端适配 */
         @media (max-width: 500px) {
             body { padding:0.5rem; }
             .app-card { border-radius:1.2rem; }
@@ -177,7 +170,6 @@
     </div>
 </div>
 
-<!-- 登录模态框 -->
 <div class="modal-overlay" id="loginModal">
     <div class="modal-box">
         <div id="choiceStep">
@@ -186,7 +178,6 @@
                 <button class="choice-btn secondary" id="choiceOld">old friend</button>
             </div>
         </div>
-
         <div id="formStep" style="display:none;">
             <div class="form-group active" id="formContainer">
                 <div id="newUserForm">
@@ -214,16 +205,12 @@
 
 <script>
 (function() {
-    // ---------- Supabase 数据库配置 ----------
     const SUPABASE_URL = 'https://sxccuavdavgygfptloxv.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_YJJac02k8LI1wKYYGx2-lg_Y66jMN5T';
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // Supabase anon key 直接可用，无需登录
     let authReady = true;
     console.log('✅ Supabase 数据库已连接');
 
-    // ---------- 离线备份存储（临时用户） ----------
     const TempDB = {
         getTempTasks() {
             try { return JSON.parse(localStorage.getItem('tempTasks')) || []; } catch { return []; }
@@ -243,14 +230,12 @@
         }
     };
 
-    // ---------- 状态 ----------
     let currentUser = null;
     let tasks = [];
     let isTemporary = true;
     let currentDefaultColor = '#C7B2A2';
     let sortableInstance = null;
 
-    // DOM
     const todoListEl = document.getElementById('todoList');
     const emptyPlaceholder = document.getElementById('emptyPlaceholder');
     const taskTitleInput = document.getElementById('taskTitle');
@@ -259,7 +244,6 @@
     const clearCompletedBtn = document.getElementById('clearCompletedBtn');
     const displayName = document.getElementById('displayName');
     const displayMotto = document.getElementById('displayMotto');
-
     const loginModal = document.getElementById('loginModal');
     const choiceStep = document.getElementById('choiceStep');
     const formStep = document.getElementById('formStep');
@@ -278,10 +262,8 @@
     const confirmItIsMe = document.getElementById('confirmItIsMe');
     const confirmNotMe = document.getElementById('confirmNotMe');
     const oldLoginError = document.getElementById('oldLoginError');
-
     let searchedUser = null;
 
-    // ---------- 工具 ----------
     function showToast(msg, dur=1800) {
         let t = document.querySelector('.toast-msg');
         if(t) t.remove();
@@ -293,7 +275,6 @@
         setTimeout(()=>d.remove(), dur);
     }
 
-    // ---------- 云端操作 ----------
     async function loadCloudTasks(userId) {
         if (!userId) return [];
         try {
@@ -312,7 +293,6 @@
                 created_at: t.created_at,
                 updated_at: t.updated_at || t.created_at
             }));
-            // 去重后返回
             return dedupeByTitle(tasks);
         } catch (error) {
             console.error('加载云端任务失败', error);
@@ -320,12 +300,10 @@
         }
     }
 
-    // 按标题去重：若 A 标题完整包含 B 标题，保留 A（信息更全），删除 B
     function dedupeByTitle(taskList) {
         if (taskList.length <= 1) return taskList;
         const result = [...taskList];
         const toRemove = new Set();
-
         for (let i = 0; i < result.length; i++) {
             if (toRemove.has(i)) continue;
             for (let j = i + 1; j < result.length; j++) {
@@ -333,7 +311,6 @@
                 const a = result[i].title.trim();
                 const b = result[j].title.trim();
                 if (a === b || a.includes(b) || b.includes(a)) {
-                    // 按修改时间保留最新的（优先 updated_at，fallback 到 created_at）
                     const getTime = (t) => {
                         const ts = t.updated_at || t.created_at;
                         return ts ? new Date(ts).getTime() : 0;
@@ -344,86 +321,97 @@
                         toRemove.add(j);
                     } else {
                         toRemove.add(i);
-                        break; // i 被删了，跳过后面的 j 比较
+                        break;
                     }
                 }
             }
         }
-
         return result.filter((_, idx) => !toRemove.has(idx));
     }
 
-    async function saveCloudTasks(userId, tasks) {
+    let cloudSyncBusy = false;
+    let pendingSync = false;
+
+    async function saveCloudTasks(userId, localTasks) {
         if (!userId) return false;
+        if (cloudSyncBusy) {
+            pendingSync = true;
+            return false;
+        }
+        cloudSyncBusy = true;
         try {
-            // 1. 拉取云端完整数据
-            const cloudTasks = await loadCloudTasks(userId);
-            console.log('[saveCloudTasks] 云端任务数:', cloudTasks.length, '本地任务数:', tasks.length);
+            const { data: rawData, error: fetchErr } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('user_id', userId);
+            if (fetchErr) throw fetchErr;
+            const rawCloudTasks = (rawData || []).map(t => ({
+                id: String(t.id),
+                title: t.title,
+                completed: t.completed,
+                color: t.color,
+                due: t.due,
+                reminded: t.reminded,
+                created_at: t.created_at,
+                updated_at: t.updated_at || t.created_at
+            }));
 
-            // 2. 构建云端标题→任务映射（标题是唯一键，用来匹配）
             const cloudByTitle = {};
-            cloudTasks.forEach(t => {
+            const duplicateIds = [];
+            rawCloudTasks.forEach(t => {
                 const key = t.title.trim();
-                cloudByTitle[key] = t;
-            });
-
-            // 3. 本地标题→任务映射
-            const localByTitle = {};
-            tasks.forEach(t => {
-                const key = t.title.trim();
-                localByTitle[key] = t;
-            });
-
-            const allTitles = new Set([...Object.keys(cloudByTitle), ...Object.keys(localByTitle)]);
-
-            // 4. 按标题去重合并：云端和本地都有 → 保留最新的；只有一边有 → 保留
-            const merged = [];
-            allTitles.forEach(title => {
-                const c = cloudByTitle[title];
-                const l = localByTitle[title];
-                if (c && l) {
-                    // 两边都有，按 updated_at 保留最新的
-                    const ct = c.updated_at || c.created_at;
-                    const lt = l.updated_at || l.created_at;
-                    const cTime = ct ? new Date(ct).getTime() : 0;
-                    const lTime = lt ? new Date(lt).getTime() : 0;
-                    const best = lTime >= cTime ? l : c;
-                    // 确保 id 是云端 id（数字）
-                    best.id = String(c.id);
-                    merged.push(best);
-                } else if (c) {
-                    merged.push(c);
-                } else if (l) {
-                    merged.push(l);
+                if (cloudByTitle[key]) {
+                    const existing = cloudByTitle[key];
+                    if (Number(t.id) < Number(existing.id)) {
+                        duplicateIds.push(Number(existing.id));
+                        cloudByTitle[key] = t;
+                    } else {
+                        duplicateIds.push(Number(t.id));
+                    }
+                } else {
+                    cloudByTitle[key] = t;
                 }
             });
-            console.log('[saveCloudTasks] 合并后:', merged.length);
-
-            // 5. 找出需要删除的（在云端但不在合并结果中）
-            const mergedTitles = new Set(merged.map(t => t.title.trim()));
-            const toDelete = cloudTasks.filter(t => !mergedTitles.has(t.title.trim()));
-
-            // 6. 找出需要新增的（在合并结果中但不在云端）
-            const cloudTitles = new Set(cloudTasks.map(t => t.title.trim()));
-            const toInsert = merged.filter(t => !cloudTitles.has(t.title.trim()));
-
-            // 7. 找出需要更新的（两边都有标题，内容可能变了）
-            const toUpdate = merged.filter(t => cloudTitles.has(t.title.trim()));
-
-            console.log('[saveCloudTasks] 删除:', toDelete.length, '新增:', toInsert.length, '更新:', toUpdate.length);
-
-            // 执行删除（用云端id，是数字）
-            if (toDelete.length > 0) {
-                const ids = toDelete.map(t => t.id);
-                console.log('[saveCloudTasks] 删除ids:', ids);
-                const { error: delErr } = await supabase
-                    .from('tasks')
-                    .delete()
-                    .in('id', ids);
-                if (delErr) { console.error('[saveCloudTasks] 删除失败:', delErr); throw delErr; }
+            if (duplicateIds.length > 0) {
+                await supabase.from('tasks').delete().in('id', duplicateIds);
             }
 
-            // 执行新增（不带id，让数据库自增）
+            const localByTitle = {};
+            for (const lt of localTasks) {
+                const key = lt.title.trim();
+                if (!localByTitle[key]) {
+                    localByTitle[key] = lt;
+                } else {
+                    const existing = localByTitle[key];
+                    const existingHasCloudId = cloudByTitle[key] && String(existing.id) === String(cloudByTitle[key].id);
+                    const ltHasCloudId = cloudByTitle[key] && String(lt.id) === String(cloudByTitle[key].id);
+                    if (ltHasCloudId && !existingHasCloudId) {
+                        localByTitle[key] = lt;
+                    }
+                }
+            }
+
+            const toUpdate = [];
+            const toInsert = [];
+            const localTitles = new Set(Object.keys(localByTitle));
+            for (const [title, lt] of Object.entries(localByTitle)) {
+                const cloudTask = cloudByTitle[title];
+                if (cloudTask) {
+                    lt.id = String(cloudTask.id);
+                    toUpdate.push(lt);
+                } else {
+                    toInsert.push(lt);
+                }
+            }
+            const toDelete = [];
+            for (const [title, ct] of Object.entries(cloudByTitle)) {
+                if (!localTitles.has(title)) toDelete.push(ct);
+            }
+
+            if (toDelete.length > 0) {
+                const ids = toDelete.map(t => Number(t.id));
+                await supabase.from('tasks').delete().in('id', ids);
+            }
             if (toInsert.length > 0) {
                 const rows = toInsert.map(t => ({
                     user_id: userId,
@@ -432,86 +420,70 @@
                     color: t.color || '#C7B2A2',
                     due: t.due || null,
                     reminded: t.reminded || false,
-                    updated_at: t.updated_at || new Date().toISOString()
+                    updated_at: new Date().toISOString()
                 }));
-                console.log('[saveCloudTasks] 准备插入:', JSON.stringify(rows));
                 const { data: insData, error: insErr } = await supabase.from('tasks').insert(rows).select();
-                console.log('[saveCloudTasks] 插入结果:', insData, '错误:', insErr);
                 if (insErr) throw insErr;
-                // 更新本地任务的 id 为数据库生成的数字id
                 if (insData) {
                     insData.forEach((dbTask, idx) => {
                         const localTask = toInsert[idx];
-                        if (localTask) {
-                            localTask.id = String(dbTask.id);
-                        }
+                        if (localTask) localTask.id = String(dbTask.id);
                     });
                 }
             }
-
-            // 执行更新（用云端id，是数字）
             for (const t of toUpdate) {
-                const { error: upErr } = await supabase
-                    .from('tasks')
-                    .update({
-                        title: t.title,
-                        completed: t.completed,
-                        color: t.color || '#C7B2A2',
-                        due: t.due || null,
-                        reminded: t.reminded || false,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', t.id);
-                if (upErr) throw upErr;
+                await supabase.from('tasks').update({
+                    title: t.title,
+                    completed: t.completed,
+                    color: t.color || '#C7B2A2',
+                    due: t.due || null,
+                    reminded: t.reminded || false,
+                    updated_at: new Date().toISOString()
+                }).eq('id', t.id);
             }
 
-            // 8. 同步本地 tasks 变量（用合并去重后的结果）
+            const merged = [...Object.values(localByTitle)];
             tasks.length = 0;
             tasks.push(...merged);
-
             return true;
         } catch (error) {
             console.error('同步任务失败', error);
             showToast('同步失败: ' + (error.message || '未知错误'), 3000);
             return false;
+        } finally {
+            cloudSyncBusy = false;
+            if (pendingSync) {
+                pendingSync = false;
+                saveCloudTasks(userId, [...tasks]);
+            }
         }
     }
 
     async function deleteCloudTask(taskId) {
         if (!currentUser) return;
         try {
-            const { error } = await supabase
-                .from('tasks')
-                .delete()
-                .eq('id', String(taskId));
-            if (error) console.error('删除云端任务失败', error);
+            await supabase.from('tasks').delete().eq('id', String(taskId));
         } catch (e) {
             console.error('删除云端任务失败', e);
         }
     }
 
-    // ---------- 核心操作 ----------
     let syncTimer = null;
     let statusTimer = null;
 
     function saveTasks() {
-        // 始终先存本地，保证操作即时响应
         localStorage.setItem('localTaskCache', JSON.stringify({
             userId: currentUser ? currentUser.id : null,
             tasks: tasks,
             updatedAt: Date.now()
         }));
         TempDB.saveTempTasks(tasks);
-
-        console.log('[saveTasks] currentUser:', currentUser, 'tasks数量:', tasks.length);
         if (currentUser) {
-            // 防抖：300ms 内多次操作只发一次云端请求
             clearTimeout(syncTimer);
             syncTimer = setTimeout(() => {
-                console.log('[saveTasks] 开始同步到云端...');
-                saveCloudTasks(currentUser.id, tasks).then(ok => {
+                const snapshot = tasks.map(t => ({ ...t }));
+                saveCloudTasks(currentUser.id, snapshot).then(ok => {
                     if (ok) {
-                        // saveCloudTasks 可能去重修改了 tasks，更新缓存和UI
                         localStorage.setItem('localTaskCache', JSON.stringify({
                             userId: currentUser.id,
                             tasks: tasks,
@@ -526,7 +498,6 @@
         }
     }
 
-    // 检查任务到期并提醒
     function checkExpiryAndNotify() {
         const now = new Date();
         let hasChange = false;
@@ -536,26 +507,20 @@
                 if (dueDate <= now) {
                     t.reminded = true;
                     hasChange = true;
-                    // 浏览器通知
                     if ('Notification' in window && Notification.permission === 'granted') {
-                        new Notification('任务已到期', { body: t.title, icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="0.9em" font-size="90">⚠</text></svg>' });
+                        new Notification('任务已到期', { body: t.title });
                     }
                     showToast(`⚠️ "${t.title}" 已到期`, 3000);
                 }
             }
         });
-        if (hasChange) {
-            saveTasks();
-            renderTasks();
-        }
+        if (hasChange) { saveTasks(); renderTasks(); }
     }
 
-    // 实时更新过期状态
     function startStatusTimer() {
         if (statusTimer) clearInterval(statusTimer);
         statusTimer = setInterval(() => {
             updateStats();
-            // 检查是否有任务过期（更新样式）
             const dueEls = document.querySelectorAll('.todo-due');
             dueEls.forEach(el => {
                 const idx = parseInt(el.closest('.todo-item')?.dataset?.index);
@@ -573,7 +538,6 @@
         }, 5000);
     }
 
-    // 请求通知权限
     function requestNotificationPermission() {
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
@@ -582,7 +546,6 @@
 
     async function loadTasks() {
         if (currentUser) {
-            // 优先用本地缓存快速渲染
             const cache = localStorage.getItem('localTaskCache');
             if (cache) {
                 try {
@@ -593,11 +556,9 @@
                     }
                 } catch {}
             }
-            // 异步加载云端数据，始终覆盖本地
             const cloudTasks = await loadCloudTasks(currentUser.id);
             tasks = cloudTasks;
             renderTasks();
-            // 更新本地缓存为云端最新数据
             localStorage.setItem('localTaskCache', JSON.stringify({
                 userId: currentUser.id,
                 tasks: cloudTasks,
@@ -635,6 +596,7 @@
         if (isNaN(d.getTime())) return '无效';
         return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
     }
+
     function getDueClass(dueISO) {
         if (!dueISO) return '';
         const now = new Date();
@@ -684,26 +646,22 @@
             titleSpan.innerText = task.title;
             titleSpan.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // 原地编辑：替换为 input
+                const oldTitle = task.title;
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.value = task.title;
                 input.className = 'inline-edit-input';
                 const finishEdit = () => {
                     const newTitle = input.value.trim();
-                    if (newTitle && newTitle !== task.title) {
+                    if (newTitle && newTitle !== oldTitle) {
                         task.title = newTitle;
                         saveTasks();
                     }
                     renderTasks();
                 };
                 input.addEventListener('blur', finishEdit);
-                input.addEventListener('keypress', (ev) => {
-                    if (ev.key === 'Enter') { input.blur(); }
-                });
-                input.addEventListener('keydown', (ev) => {
-                    if (ev.key === 'Escape') { input.value = task.title; input.blur(); }
-                });
+                input.addEventListener('keypress', (ev) => { if (ev.key === 'Enter') input.blur(); });
+                input.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { input.value = oldTitle; input.blur(); } });
                 titleSpan.replaceWith(input);
                 input.focus();
                 input.select();
@@ -722,7 +680,6 @@
             }
             dueSpan.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // 原地编辑日期
                 const input = document.createElement('input');
                 input.type = 'datetime-local';
                 if (task.due) {
@@ -734,43 +691,31 @@
                 const finishEdit = () => {
                     if (input.value) {
                         const d = new Date(input.value);
-                        if (!isNaN(d.getTime())) {
-                            task.due = d.toISOString();
-                            task.reminded = false;
-                        }
-                    } else {
-                        task.due = null;
-                        task.reminded = false;
-                    }
+                        if (!isNaN(d.getTime())) { task.due = d.toISOString(); task.reminded = false; }
+                    } else { task.due = null; task.reminded = false; }
                     saveTasks();
                     renderTasks();
                 };
                 input.addEventListener('blur', finishEdit);
-                input.addEventListener('keypress', (ev) => {
-                    if (ev.key === 'Enter') { input.blur(); }
-                });
-                input.addEventListener('keydown', (ev) => {
-                    if (ev.key === 'Escape') { renderTasks(); }
-                });
+                input.addEventListener('keypress', (ev) => { if (ev.key === 'Enter') input.blur(); });
+                input.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') renderTasks(); });
                 dueSpan.replaceWith(input);
                 input.focus();
             });
+
             const deleteBtn = document.createElement('button');
             deleteBtn.innerHTML = '✕';
             deleteBtn.className = 'delete-simple';
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const removed = tasks.splice(index, 1);
-                if (removed.length > 0 && currentUser) {
-                    deleteCloudTask(removed[0].id);
-                }
+                if (removed.length > 0 && currentUser) deleteCloudTask(removed[0].id);
                 saveTasks();
                 renderTasks();
                 showToast('已删除', 800);
             });
             dueDeleteWrapper.appendChild(dueSpan);
             dueDeleteWrapper.appendChild(deleteBtn);
-
             li.appendChild(checkDiv);
             li.appendChild(titleSpan);
             li.appendChild(dueDeleteWrapper);
@@ -786,11 +731,7 @@
                 const picker = document.createElement('input');
                 picker.type = 'color';
                 picker.value = task.color || '#C7B2A2';
-                picker.addEventListener('input', (e) => {
-                    task.color = e.target.value;
-                    saveTasks();
-                    renderTasks();
-                });
+                picker.addEventListener('input', (e) => { task.color = e.target.value; saveTasks(); renderTasks(); });
                 picker.click();
             });
         });
@@ -798,10 +739,9 @@
         if (sortableInstance) sortableInstance.destroy();
         sortableInstance = new Sortable(todoListEl, {
             animation: 200,
-            handle: '.todo-item',
             ghostClass: 'sortable-drag',
-            delay: 500,
-            delayOnTouchOnly: true,
+            filter: '.todo-check, .todo-check input, .todo-due, .inline-due-input, .inline-edit-input, .delete-simple',
+            preventOnFilter: false,
             onEnd: () => {
                 const items = document.querySelectorAll('#todoList .todo-item');
                 const newOrder = [];
@@ -814,19 +754,14 @@
         updateStats();
     }
 
-    // ---------- 登录流程 ----------
-    // 获取临时任务（用于登录后合并）
     function getTempTasksForMerge() {
-        const tempTasks = TempDB.getTempTasks();
-        return tempTasks.filter(t => !t.completed);
+        return TempDB.getTempTasks().filter(t => !t.completed);
     }
 
-    // 合并临时任务到当前任务列表
     function mergeTempTasks() {
         if (!currentUser || !isTemporary) {
             const tempTasks = getTempTasksForMerge();
             if (tempTasks.length > 0) {
-                // 用 title 去重，避免重复添加
                 const existingTitles = new Set(tasks.map(t => t.title));
                 const newTasks = tempTasks.filter(t => !existingTitles.has(t.title));
                 if (newTasks.length > 0) {
@@ -834,11 +769,11 @@
                     saveTasks();
                     showToast(`已同步 ${newTasks.length} 条临时任务`, 2000);
                 }
-                // 清除临时存储
                 TempDB.saveTempTasks([]);
             }
         }
     }
+
     function openLoginModal() {
         choiceStep.style.display = 'block';
         formStep.style.display = 'none';
@@ -854,9 +789,7 @@
         loginModal.classList.add('active');
     }
 
-    function closeLoginModal() {
-        loginModal.classList.remove('active');
-    }
+    function closeLoginModal() { loginModal.classList.remove('active'); }
 
     function showNewUserForm() {
         choiceStep.style.display = 'none';
@@ -884,37 +817,12 @@
     async function handleNewUserSubmit() {
         const name = loginName.value.trim();
         const motto = loginMotto.value.trim();
-        if (!name || !motto) {
-            loginError.innerText = '请完整填写';
-            loginError.style.color = '#c2410c';
-            return;
-        }
-        if (/\s/.test(name)) {
-            loginError.innerText = 'nickname 不能包含空格';
-            loginError.style.color = '#c2410c';
-            return;
-        }
-
+        if (!name || !motto) { loginError.innerText = '请完整填写'; return; }
+        if (/\s/.test(name)) { loginError.innerText = 'nickname 不能包含空格'; return; }
         try {
-            // 再次检查是否已存在（最终校验）
-            const { data: existing, error: checkErr } = await supabase
-                .from('users')
-                .select('*')
-                .eq('name', name);
-            if (checkErr) throw checkErr;
-            if (existing && existing.length > 0) {
-                loginError.innerText = 'You were here! Old friend?';
-                loginError.style.color = '#c2410c';
-                return;
-            }
-
-            // 注册新用户
-            const { data: newUser, error: addErr } = await supabase
-                .from('users')
-                .insert({ name, motto })
-                .select()
-                .single();
-            if (addErr) throw addErr;
+            const { data: existing } = await supabase.from('users').select('*').eq('name', name);
+            if (existing && existing.length > 0) { loginError.innerText = 'You were here! Old friend?'; return; }
+            const { data: newUser } = await supabase.from('users').insert({ name, motto }).select().single();
             currentUser = { id: newUser.id, name, motto };
             isTemporary = false;
             localStorage.setItem('savedUser', JSON.stringify({ name, motto }));
@@ -927,48 +835,26 @@
             showToast(`欢迎，${currentUser.name}`);
         } catch (err) {
             loginError.innerText = '注册失败: ' + err.message;
-            loginError.style.color = '#c2410c';
         }
     }
 
     async function handleOldUserSearch() {
         const name = oldLoginName.value.trim();
-        if (!name) {
-            oldLoginError.innerText = '请输入 nickname';
-            return;
-        }
-        if (/\s/.test(name)) {
-            oldLoginError.innerText = 'nickname 不能包含空格';
-            return;
-        }
+        if (!name) { oldLoginError.innerText = '请输入 nickname'; return; }
+        if (/\s/.test(name)) { oldLoginError.innerText = 'nickname 不能包含空格'; return; }
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('name', name);
-            if (error) throw error;
-            if (!data || data.length === 0) {
-                oldLoginError.innerText = '未找到该用户';
-                mottoDisplayArea.style.display = 'none';
-                searchedUser = null;
-                return;
-            }
+            const { data } = await supabase.from('users').select('*').eq('name', name);
+            if (!data || data.length === 0) { oldLoginError.innerText = '未找到该用户'; mottoDisplayArea.style.display = 'none'; searchedUser = null; return; }
             const user = data[0];
             foundMottoText.innerText = user.motto;
             mottoDisplayArea.style.display = 'block';
             oldLoginError.innerText = '';
             searchedUser = { id: user.id, name: user.name, motto: user.motto };
-        } catch (err) {
-            oldLoginError.innerText = '搜索失败: ' + err.message;
-            searchedUser = null;
-        }
+        } catch (err) { oldLoginError.innerText = '搜索失败: ' + err.message; searchedUser = null; }
     }
 
     async function handleOldUserConfirm() {
-        if (!searchedUser) {
-            oldLoginError.innerText = '请先搜索用户';
-            return;
-        }
+        if (!searchedUser) { oldLoginError.innerText = '请先搜索用户'; return; }
         currentUser = { id: searchedUser.id, name: searchedUser.name, motto: searchedUser.motto };
         isTemporary = false;
         localStorage.setItem('savedUser', JSON.stringify({ name: currentUser.name, motto: currentUser.motto }));
@@ -989,63 +875,34 @@
         oldLoginName.focus();
     }
 
-    // ---------- 事件绑定 ----------
     displayName.addEventListener('click', openLoginModal);
-
     choiceNew.addEventListener('click', showNewUserForm);
     choiceOld.addEventListener('click', showOldUserForm);
-
     formBackBtn.addEventListener('click', () => {
-        choiceStep.style.display = 'block';
-        formStep.style.display = 'none';
-        loginError.innerText = '';
-        oldLoginError.innerText = '';
-        mottoDisplayArea.style.display = 'none';
-        searchedUser = null;
+        choiceStep.style.display = 'block'; formStep.style.display = 'none';
+        loginError.innerText = ''; oldLoginError.innerText = ''; mottoDisplayArea.style.display = 'none'; searchedUser = null;
     });
-
     formActionBtn.addEventListener('click', handleNewUserSubmit);
     loginMotto.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleNewUserSubmit(); });
     loginName.addEventListener('keypress', (e) => { if (e.key === 'Enter') loginMotto.focus(); });
 
-    // 实时校验名字重复
     let nameCheckTimer = null;
     loginName.addEventListener('input', () => {
         const name = loginName.value.trim();
-        if (!name || /\s/.test(name)) {
-            loginError.innerText = '';
-            return;
-        }
-        // 防抖 400ms
+        if (!name || /\s/.test(name)) { loginError.innerText = ''; return; }
         clearTimeout(nameCheckTimer);
         nameCheckTimer = setTimeout(async () => {
             try {
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('name')
-                    .eq('name', name)
-                    .limit(1);
-                if (error) return;
-                if (data && data.length > 0) {
-                    loginError.innerText = "You were here! Old friend?";
-                    loginError.style.color = '#c2410c';
-                } else {
-                    loginError.innerText = '';
-                }
+                const { data } = await supabase.from('users').select('name').eq('name', name).limit(1);
+                if (data && data.length > 0) loginError.innerText = "You were here! Old friend?";
+                else loginError.innerText = '';
             } catch {}
         }, 400);
     });
 
-    oldLoginName.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            handleOldUserSearch();
-        }
-    });
-
+    oldLoginName.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleOldUserSearch(); } });
     confirmItIsMe.addEventListener('click', handleOldUserConfirm);
     confirmNotMe.addEventListener('click', handleOldUserNotMe);
-
     loginModal.addEventListener('click', (e) => { if (e.target === loginModal) closeLoginModal(); });
 
     addBtn.addEventListener('click', () => {
@@ -1054,7 +911,6 @@
         let due = null;
         if (taskDueDateInput.value) { const d = new Date(taskDueDateInput.value); if (!isNaN(d.getTime())) due = d.toISOString(); }
         tasks.unshift({ id: String(Date.now()), title, completed: false, color: currentDefaultColor, due, reminded: false });
-        console.log('[addBtn] 添加任务, currentUser:', currentUser, 'isTemporary:', isTemporary);
         saveTasks();
         renderTasks();
         taskTitleInput.value = '';
@@ -1066,7 +922,6 @@
     clearCompletedBtn.addEventListener('click', () => {
         const undone = tasks.filter(t => !t.completed);
         if (undone.length === tasks.length) { showToast('没有已完成的任务'); return; }
-        // 删除云端已完成的任务
         const completed = tasks.filter(t => t.completed);
         completed.forEach(t => { if (currentUser) deleteCloudTask(t.id); });
         tasks = undone;
@@ -1087,126 +942,75 @@
         if (el.dataset.color === '#C7B2A2') el.classList.add('active');
     });
 
-    // ---------- 登出 ----------
     window.logout = function() {
-        if (currentUser) {
-            saveCloudTasks(currentUser.id, tasks);
-        }
+        if (currentUser) saveCloudTasks(currentUser.id, tasks);
         localStorage.removeItem('savedUser');
         currentUser = null;
         isTemporary = true;
-        loadTasks().then(() => {
-            renderTasks();
-            updateUI();
-            showToast('已退出');
-        });
+        loadTasks().then(() => { renderTasks(); updateUI(); showToast('已退出'); });
     };
 
-    // ---------- 初始化 ----------
     async function init() {
-        // 确保 Supabase SDK 已加载
         if (typeof supabase === 'undefined') {
-            console.warn('Supabase SDK 未加载，使用离线模式');
             tasks = TempDB.getTempTasks();
             renderTasks();
             updateUI();
             startStatusTimer();
             return;
         }
-
         requestNotificationPermission();
-
-        if (TempDB.checkTempExpiry()) {
-            tasks = [];
-            TempDB.saveTempTasks(tasks);
-        }
+        if (TempDB.checkTempExpiry()) { tasks = []; TempDB.saveTempTasks(tasks); }
 
         const savedUser = localStorage.getItem('savedUser');
         if (savedUser) {
             try {
                 const parsed = JSON.parse(savedUser);
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('name', parsed.name)
-                    .eq('motto', parsed.motto);
-                if (error) throw error;
+                const { data } = await supabase.from('users').select('*').eq('name', parsed.name).eq('motto', parsed.motto);
                 if (data && data.length > 0) {
                     const user = data[0];
                     currentUser = { id: user.id, name: user.name, motto: user.motto };
                     isTemporary = false;
-                    await loadTasks();
-                    renderTasks();
-                    updateUI();
-                    showToast(`欢迎回来，${currentUser.name}`, 1500);
                 } else {
                     localStorage.removeItem('savedUser');
                     currentUser = null;
                     isTemporary = true;
-                    await loadTasks();
-                    renderTasks();
-                    updateUI();
                 }
             } catch (e) {
-                console.warn('恢复用户失败，使用离线模式', e);
                 localStorage.removeItem('savedUser');
                 currentUser = null;
                 isTemporary = true;
-                await loadTasks();
-                renderTasks();
-                updateUI();
             }
-        } else {
-            currentUser = null;
-            isTemporary = true;
-            await loadTasks();
-            renderTasks();
-            updateUI();
         }
+        await loadTasks();
+        renderTasks();
+        updateUI();
 
-        // 设置日期选择器最小值（避免选择过去太久的时间）
         const now = new Date();
         const pad = (n) => String(n).padStart(2, '0');
         taskDueDateInput.setAttribute('min', `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`);
-        // 移动端 datetime-local 无 placeholder，通过监听 value 变化添加视觉提示
         const updateDateInputStyle = () => {
-            if (taskDueDateInput.value) {
-                taskDueDateInput.classList.add('has-value');
-            } else {
-                taskDueDateInput.classList.remove('has-value');
-            }
+            taskDueDateInput.classList.toggle('has-value', !!taskDueDateInput.value);
         };
         taskDueDateInput.addEventListener('change', updateDateInputStyle);
         taskDueDateInput.addEventListener('input', updateDateInputStyle);
         updateDateInputStyle();
-
         startStatusTimer();
-
-        // 实时同步：监听云端数据变化
         setupRealtimeSync();
+    }
 
     function setupRealtimeSync() {
         if (currentUser && typeof supabase !== 'undefined') {
             supabase
                 .channel('tasks-sync')
-                .on('postgres_changes', {
-                    event: '*',
-                    schema: 'public',
-                    table: 'tasks',
-                    filter: `user_id=eq.${currentUser.id}`
-                }, async () => {
-                    const cloudTasks = await loadCloudTasks(currentUser.id);
-                    tasks = cloudTasks;
-                    renderTasks();
-                    localStorage.setItem('localTaskCache', JSON.stringify({
-                        userId: currentUser.id,
-                        tasks: cloudTasks,
-                        updatedAt: Date.now()
-                    }));
-                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${currentUser.id}` },
+                    async () => {
+                        const cloudTasks = await loadCloudTasks(currentUser.id);
+                        tasks = cloudTasks;
+                        renderTasks();
+                        localStorage.setItem('localTaskCache', JSON.stringify({ userId: currentUser.id, tasks: cloudTasks, updatedAt: Date.now() }));
+                    })
                 .subscribe();
         }
-    }
     }
 
     init();
