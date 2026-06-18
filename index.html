@@ -349,30 +349,66 @@
     async function saveCloudTasks(userId, tasks) {
         if (!userId) return false;
         try {
-            // 1. 拉取云端完整数据（不只是ID）
+            // 1. 拉取云端完整数据
             const cloudTasks = await loadCloudTasks(userId);
             console.log('[saveCloudTasks] 云端任务数:', cloudTasks.length, '本地任务数:', tasks.length);
 
-            // 2. 合并本地和云端，按标题去重
-            const merged = dedupeByTitle([...tasks, ...cloudTasks]);
-            console.log('[saveCloudTasks] 去重后:', merged.length);
+            // 2. 构建云端标题→任务映射（标题是唯一键，用来匹配）
+            const cloudByTitle = {};
+            cloudTasks.forEach(t => {
+                const key = t.title.trim();
+                cloudByTitle[key] = t;
+            });
 
-            // 3. 找出需要删除的（在云端但不在合并结果中）
-            const mergedIds = new Set(merged.map(t => String(t.id)));
-            const toDelete = cloudTasks.filter(t => !mergedIds.has(String(t.id)));
+            // 3. 本地标题→任务映射
+            const localByTitle = {};
+            tasks.forEach(t => {
+                const key = t.title.trim();
+                localByTitle[key] = t;
+            });
 
-            // 4. 找出需要新增的（在合并结果中但不在云端）
-            const cloudIds = new Set(cloudTasks.map(t => String(t.id)));
-            const toInsert = merged.filter(t => !cloudIds.has(String(t.id)));
+            const allTitles = new Set([...Object.keys(cloudByTitle), ...Object.keys(localByTitle)]);
 
-            // 5. 找出需要更新的（两边都有，内容可能变了）
-            const toUpdate = merged.filter(t => cloudIds.has(String(t.id)));
+            // 4. 按标题去重合并：云端和本地都有 → 保留最新的；只有一边有 → 保留
+            const merged = [];
+            allTitles.forEach(title => {
+                const c = cloudByTitle[title];
+                const l = localByTitle[title];
+                if (c && l) {
+                    // 两边都有，按 updated_at 保留最新的
+                    const ct = c.updated_at || c.created_at;
+                    const lt = l.updated_at || l.created_at;
+                    const cTime = ct ? new Date(ct).getTime() : 0;
+                    const lTime = lt ? new Date(lt).getTime() : 0;
+                    const best = lTime >= cTime ? l : c;
+                    // 确保 id 是云端 id（数字）
+                    best.id = String(c.id);
+                    merged.push(best);
+                } else if (c) {
+                    merged.push(c);
+                } else if (l) {
+                    merged.push(l);
+                }
+            });
+            console.log('[saveCloudTasks] 合并后:', merged.length);
+
+            // 5. 找出需要删除的（在云端但不在合并结果中）
+            const mergedTitles = new Set(merged.map(t => t.title.trim()));
+            const toDelete = cloudTasks.filter(t => !mergedTitles.has(t.title.trim()));
+
+            // 6. 找出需要新增的（在合并结果中但不在云端）
+            const cloudTitles = new Set(cloudTasks.map(t => t.title.trim()));
+            const toInsert = merged.filter(t => !cloudTitles.has(t.title.trim()));
+
+            // 7. 找出需要更新的（两边都有标题，内容可能变了）
+            const toUpdate = merged.filter(t => cloudTitles.has(t.title.trim()));
 
             console.log('[saveCloudTasks] 删除:', toDelete.length, '新增:', toInsert.length, '更新:', toUpdate.length);
 
-            // 执行删除
+            // 执行删除（用云端id，是数字）
             if (toDelete.length > 0) {
-                const ids = toDelete.map(t => String(t.id));
+                const ids = toDelete.map(t => t.id);
+                console.log('[saveCloudTasks] 删除ids:', ids);
                 const { error: delErr } = await supabase
                     .from('tasks')
                     .delete()
@@ -380,10 +416,9 @@
                 if (delErr) { console.error('[saveCloudTasks] 删除失败:', delErr); throw delErr; }
             }
 
-            // 执行新增
+            // 执行新增（不带id，让数据库自增）
             if (toInsert.length > 0) {
                 const rows = toInsert.map(t => ({
-                    id: String(t.id),
                     user_id: userId,
                     title: t.title,
                     completed: t.completed,
@@ -396,9 +431,18 @@
                 const { data: insData, error: insErr } = await supabase.from('tasks').insert(rows).select();
                 console.log('[saveCloudTasks] 插入结果:', insData, '错误:', insErr);
                 if (insErr) throw insErr;
+                // 更新本地任务的 id 为数据库生成的数字id
+                if (insData) {
+                    insData.forEach((dbTask, idx) => {
+                        const localTask = toInsert[idx];
+                        if (localTask) {
+                            localTask.id = String(dbTask.id);
+                        }
+                    });
+                }
             }
 
-            // 执行更新
+            // 执行更新（用云端id，是数字）
             for (const t of toUpdate) {
                 const { error: upErr } = await supabase
                     .from('tasks')
@@ -410,11 +454,11 @@
                         reminded: t.reminded || false,
                         updated_at: new Date().toISOString()
                     })
-                    .eq('id', String(t.id));
+                    .eq('id', t.id);
                 if (upErr) throw upErr;
             }
 
-            // 6. 同步本地 tasks 变量（用合并去重后的结果）
+            // 8. 同步本地 tasks 变量（用合并去重后的结果）
             tasks.length = 0;
             tasks.push(...merged);
 
@@ -452,10 +496,12 @@
         }));
         TempDB.saveTempTasks(tasks);
 
+        console.log('[saveTasks] currentUser:', currentUser, 'tasks数量:', tasks.length);
         if (currentUser) {
             // 防抖：300ms 内多次操作只发一次云端请求
             clearTimeout(syncTimer);
             syncTimer = setTimeout(() => {
+                console.log('[saveTasks] 开始同步到云端...');
                 saveCloudTasks(currentUser.id, tasks).then(ok => {
                     if (ok) {
                         // saveCloudTasks 可能去重修改了 tasks，更新缓存和UI
@@ -999,6 +1045,7 @@
         let due = null;
         if (taskDueDateInput.value) { const d = new Date(taskDueDateInput.value); if (!isNaN(d.getTime())) due = d.toISOString(); }
         tasks.unshift({ id: String(Date.now()), title, completed: false, color: currentDefaultColor, due, reminded: false });
+        console.log('[addBtn] 添加任务, currentUser:', currentUser, 'isTemporary:', isTemporary);
         saveTasks();
         renderTasks();
         taskTitleInput.value = '';
