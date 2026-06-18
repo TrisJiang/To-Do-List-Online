@@ -799,6 +799,7 @@
                 input.className = 'inline-edit-input';
                 input.style.width = titleWidth + 'px';
                 input.style.flex = 'none';
+                input.rows = 1;
                 const finishEdit = () => {
                     const newTitle = input.value.trim();
                     if (newTitle && newTitle !== oldTitle) {
