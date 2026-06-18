@@ -48,11 +48,11 @@
         .delete-done-btn { background:#f1f5f9; border:none; padding:0.4rem 1.2rem; border-radius:2rem; font-size:0.8rem; font-weight:500; color:#4b556b; cursor:pointer; }
         .delete-done-btn:hover { background:#fee2e2; color:#c2410c; }
         .color-palette { display:flex; gap:0.7rem; align-items:center; }
-        .color-swatch { width:28px; height:28px; border-radius:50%; cursor:pointer; border:2px solid white; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:0.1s; }
-        .color-swatch.active { border-color:#1e293b; transform:scale(1.08); }
+        .color-swatch { width:28px; height:28px; border-radius:50%; cursor:pointer; border:2px solid #1e293b; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:0.1s; }
+        .color-swatch.active { border-color:#fff; transform:scale(1.08); }
         .color-swatch:hover { transform:scale(1.05); }
         .todo-container { padding:1rem 1.5rem 0.6rem 1.5rem; flex:1; overflow:hidden; display:flex; flex-direction:column; min-height:0; }
-        .todo-list-scroll { flex:1; overflow-y:auto; padding-right:0.3rem; min-height:0; }
+        .todo-list-scroll { flex:1; overflow-y:auto; padding-right:5px; min-height:0; }
         .todo-list-scroll::-webkit-scrollbar { width:5px; }
         .todo-list-scroll::-webkit-scrollbar-track { background:transparent; }
         .todo-list-scroll::-webkit-scrollbar-thumb { background:rgba(199,178,162,0.35); border-radius:10px; }
@@ -63,22 +63,25 @@
         .todo-item:active { cursor:grabbing; }
         .sortable-drag { opacity:0.3; background:#f1f5f9; }
         .todo-check { flex-shrink:0; display:flex; align-items:center; }
-        .todo-check input { width:1.35rem; height:1.35rem; min-width:1.35rem; min-height:1.35rem; cursor:pointer; accent-color:#7C9E8E; }
-        .todo-title { flex:3; font-size:0.95rem; font-weight:500; color:#0a1c2f; word-break:break-word; padding:0.2rem 0; cursor:text; }
+        .custom-checkbox { display:flex; align-items:center; justify-content:center; width:1.5rem; height:1.5rem; min-width:1.5rem; min-height:1.5rem; border-radius:50%; cursor:pointer; background:#f1f5f9; transition:0.15s; }
+        .custom-checkbox.checked { background:var(--cb-color, #8C9E9E); }
+        .custom-checkbox.checked::after { content:'✓'; color:#fff; font-size:0.85rem; font-weight:700; line-height:1; }
+        .custom-checkbox input { position:absolute; opacity:0; width:0; height:0; pointer-events:none; }
+        .todo-title { flex:0 1 auto; max-width:60%; font-size:0.95rem; font-weight:500; color:#0a1c2f; word-break:break-word; overflow-wrap:break-word; padding:0.2rem 0; cursor:text; line-height:1.45; }
         .todo-title:hover { background:#f8fafc; }
         .completed-task .todo-title { text-decoration:line-through; color:#94a3b8; }
-        /* 原地编辑输入框 */
-        .inline-edit-input { flex:3; font-size:0.95rem; font-weight:500; color:#0a1c2f; border:1.5px solid #7C9E8E; border-radius:0.5rem; padding:0.25rem 0.5rem; background:#f8fdfa; outline:none; min-width:100px; }
-        .inline-edit-input:focus { border-color:#5a7d6a; box-shadow:0 0 0 2px rgba(124,158,142,0.2); }
-        .due-and-delete { display:flex; align-items:center; gap:0.6rem; flex-shrink:0; }
+        /* 原地编辑输入框 —— 与 .todo-title 尺寸完全一致 */
+        .inline-edit-input { flex:0 1 auto; max-width:60%; font-size:0.95rem; font-weight:500; font-family:inherit; color:#0a1c2f; padding:0.2rem 0; margin:0; border:none; background:transparent; outline:none; min-width:0; resize:none; overflow:hidden; overflow-wrap:break-word; word-break:break-word; border-radius:0; line-height:1.45; }
+        .due-and-delete { display:flex; align-items:center; gap:0.6rem; flex-shrink:0; margin-left:auto; }
         .todo-due { font-size:0.7rem; background:#f1f5f9; padding:0.3rem 0.8rem; border-radius:2rem; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; font-weight:500; cursor:pointer; }
         .todo-due:hover { background:#e6edf5; }
         /* 原地编辑日期输入框 */
-        .inline-due-input { font-size:0.7rem; padding:0.3rem 0.5rem; border-radius:0.5rem; border:1.5px solid #7C9E8E; background:#f8fdfa; outline:none; width:130px; min-width:100px; }
-        .inline-due-input:focus { border-color:#5a7d6a; box-shadow:0 0 0 2px rgba(124,158,142,0.2); }
+        .inline-due-input { font-size:0.7rem; padding:0.3rem 0.5rem; border-radius:0.5rem; border:1.5px solid #8C9E9E; background:#f8fdfa; outline:none; width:130px; min-width:100px; }
+        .inline-due-input:focus { border-color:#6b8b80; box-shadow:0 0 0 2px rgba(108,139,128,0.2); }
         .due-urgent { background:#f5e0e0; color:#ac6f6f; }
+        .due-urgent.completed-due { background:#f1f0f0; color:#b0a0a0; }
         .due-soon { background:#f5ede0; color:#bc8f6a; }
-        .due-normal { background:#e2edf0; color:#5f7f7a; }
+        .due-normal { background:#e8edeb; color:#6b8b80; }
         .delete-simple { background:transparent; border:none; font-size:1.2rem; cursor:pointer; color:#8b9abb; padding:0.2rem 0.3rem; border-radius:2rem; }
         .delete-simple:hover { background:#fee9e6; color:#e5483b; }
         .stats-wrapper { padding:0.8rem 1.5rem 1.2rem 1.5rem; border-top:1px solid #eff3f8; flex-shrink:0; }
@@ -124,14 +127,67 @@
             .todo-item { padding:0.6rem 0.7rem; gap:0.5rem; min-height:52px; }
             .todo-title { font-size:0.9rem; padding:0.5rem 0.3rem; min-height:36px; }
             .todo-check { padding:6px; }
-            .todo-check input { width:1.6rem; height:1.6rem; min-width:1.6rem; min-height:1.6rem; }
-            .inline-edit-input { font-size:0.9rem; padding:0.5rem; min-height:36px; }
+            .custom-checkbox { width:1.7rem; height:1.7rem; min-width:1.7rem; min-height:1.7rem; }
+            .custom-checkbox.checked::after { font-size:0.95rem; }
+            .inline-edit-input { font-size:0.9rem; padding:0.2rem 0; min-height:36px; line-height:1.45; }
             .inline-due-input { width:auto; max-width:130px; font-size:0.8rem; padding:0.5rem; min-height:36px; }
             .todo-due { font-size:0.7rem; padding:0.4rem 0.8rem; min-height:34px; }
             .due-and-delete { gap:0.4rem; }
             .delete-simple { font-size:1.5rem; padding:0.4rem 0.6rem; min-width:40px; min-height:40px; }
             .stats-wrapper { padding:0.6rem 0.8rem 0.8rem 0.8rem; }
             .stats-box { gap:1rem; font-size:0.7rem; padding:0.5rem 0.6rem; }
+        }
+
+        /* 深色模式 */
+        @media (prefers-color-scheme: dark) {
+            body { background:#1a1d23; }
+            .app-card { background:#252830; box-shadow:0 20px 35px -12px rgba(0,0,0,0.3); }
+            .app-header { border-bottom-color:#333840; }
+            .app-header h1 { background:linear-gradient(130deg,#c0cdd8,#8899aa); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+            .subhead { color:#8899aa; }
+            .subhead span { color:#c0cdd8; }
+            .subhead span:hover { background:#333840; }
+            .todo-form { border-bottom-color:#333840; }
+            .task-input-wrapper input { background:#2a2d35; border-color:#3a3d46; color:#e0e4ea; }
+            .task-input-wrapper input::placeholder { color:#666a75; }
+            .due-date-wrapper input { background:#2a2d35; border-color:#3a3d46; color:#94a3b8; }
+            .due-date-wrapper input:focus, .due-date-wrapper input.has-value { color:#e0e4ea; }
+            .action-bar { border-bottom-color:#333840; }
+            .delete-done-btn { background:#2a2d35; color:#8899aa; }
+            .delete-done-btn:hover { background:#3d2025; color:#e07070; }
+            .todo-container {  }
+            .custom-checkbox { background:#333840; }
+            .custom-checkbox.checked { background:var(--cb-color, #7a9a94); }
+            .todo-item { background:#2a2d35; box-shadow:0 2px 8px rgba(0,0,0,0.15); }
+            .todo-title { color:#e0e4ea; }
+            .todo-title:hover { background:#333840; }
+            .completed-task .todo-title { color:#555a65; }
+            .inline-edit-input { background:#1e2027; color:#e0e4ea; }
+            .todo-due { background:#333840; color:#8899aa; }
+            .todo-due:hover { background:#3a3d46; }
+            .due-urgent { background:#3d2025; color:#e07070; }
+            .due-urgent.completed-due { background:#2a2d32; color:#5a6068; }
+            .due-soon { background:#3d3520; color:#d4a860; }
+            .due-normal { background:#253530; color:#7a9a94; }
+            .inline-due-input { background:#1e2027; border-color:#5a7d6a; color:#e0e4ea; }
+            .inline-due-input:focus { border-color:#6e9e7e; box-shadow:0 0 0 2px rgba(124,158,142,0.3); }
+            .delete-simple { color:#667080; }
+            .delete-simple:hover { background:#3a3538; color:#c0a0a0; }
+            .stats-wrapper { border-top-color:#333840; }
+            .stats-box { background:#2a2d35; color:#8899aa; }
+            .stat-number { color:#7a9a94; background:#333840; }
+            .empty-message { color:#555a65; background:#2a2d35; }
+            .modal-box { background:#252830; color:#c0cdd8; box-shadow:0 20px 40px rgba(0,0,0,0.5); }
+            .modal-box .motto-display { background:#333840; }
+            .modal-box .form-group input { background:#2a2d35; border-color:#3a3d46; color:#e0e4ea; }
+            .modal-box .choice-btn.secondary { background:#3a3d46; color:#8899aa; }
+            .modal-box .choice-btn.secondary:hover { background:#4a4d56; }
+            .modal-box .confirm-btn.secondary { background:#3a3d46; color:#8899aa; }
+            .modal-box .back-btn { color:#667080; }
+            .modal-box .error { color:#e07070; }
+            .color-swatch { box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+            .todo-list-scroll::-webkit-scrollbar-thumb { background:rgba(100,100,110,0.35); }
+            .todo-list-scroll::-webkit-scrollbar-thumb:hover { background:rgba(120,120,130,0.55); }
         }
     </style>
 </head>
@@ -605,10 +661,10 @@
             dueEls.forEach(el => {
                 const idx = parseInt(el.closest('.todo-item')?.dataset?.index);
                 if (idx !== undefined && tasks[idx] && tasks[idx].due) {
-                    const cls = getDueClass(tasks[idx].due);
+                    const cls = getDueClass(tasks[idx].due, tasks[idx].completed);
                     el.className = `todo-due ${cls}`;
                     if (tasks[idx].due) {
-                        if (cls === 'due-urgent') el.innerHTML = `⚠️ ${formatDueDate(tasks[idx].due)}`;
+                        if (cls.startsWith('due-urgent')) el.innerHTML = tasks[idx].completed ? `✓ ${formatDueDate(tasks[idx].due)}` : `⚠️ ${formatDueDate(tasks[idx].due)}`;
                         else if (cls === 'due-soon') el.innerHTML = `⏳ ${formatDueDate(tasks[idx].due)}`;
                         else el.innerHTML = `📅 ${formatDueDate(tasks[idx].due)}`;
                     }
@@ -680,13 +736,13 @@
         if (isNaN(d.getTime())) return '无效';
         return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
     }
-    function getDueClass(dueISO) {
+    function getDueClass(dueISO, completed) {
         if (!dueISO) return '';
         const now = new Date();
         const due = new Date(dueISO);
         if (isNaN(due)) return '';
         const diff = due - now;
-        if (diff < 0) return 'due-urgent';
+        if (diff < 0) return completed ? 'due-urgent completed-due' : 'due-urgent';
         if (diff <= 3600000) return 'due-soon';
         return 'due-normal';
     }
@@ -713,16 +769,21 @@
 
             const checkDiv = document.createElement('div');
             checkDiv.className = 'todo-check';
+            const checkLabel = document.createElement('label');
+            checkLabel.className = 'custom-checkbox' + (task.completed ? ' checked' : '');
+            checkLabel.style.setProperty('--cb-color', task.color || '#8C9E9E');
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.checked = task.completed;
             cb.addEventListener('change', (e) => {
                 e.stopPropagation();
                 task.completed = cb.checked;
+                checkLabel.classList.toggle('checked', cb.checked);
                 saveTasks();
                 renderTasks();
             });
-            checkDiv.appendChild(cb);
+            checkLabel.appendChild(cb);
+            checkDiv.appendChild(checkLabel);
 
             const titleSpan = document.createElement('span');
             titleSpan.className = 'todo-title';
@@ -731,22 +792,34 @@
                 e.stopPropagation();
                 // 原地编辑：替换为 input
                 const oldTitle = task.title;
-                const input = document.createElement('input');
-                input.type = 'text';
+                const clickX = e.clientX;
+                const titleWidth = titleSpan.getBoundingClientRect().width;
+                const input = document.createElement('textarea');
                 input.value = task.title;
                 input.className = 'inline-edit-input';
+                input.style.width = titleWidth + 'px';
+                input.style.flex = 'none';
                 const finishEdit = () => {
                     const newTitle = input.value.trim();
                     if (newTitle && newTitle !== oldTitle) {
                         task.title = newTitle;
-                        // 云端通过 title 匹配，修改标题后需要将旧标题的云端任务删除
                         saveTasks();
                     }
                     renderTasks();
                 };
+                const autoResize = () => {
+                    input.style.height = 'auto';
+                    input.style.height = input.scrollHeight + 'px';
+                    // 保持宽度不超出
+                    if (input.scrollWidth > titleWidth) {
+                        input.style.width = 'auto';
+                        input.style.width = Math.min(input.scrollWidth + 4, input.parentElement.clientWidth * 0.6) + 'px';
+                    }
+                };
+                input.addEventListener('input', autoResize);
                 input.addEventListener('blur', finishEdit);
                 input.addEventListener('keypress', (ev) => {
-                    if (ev.key === 'Enter') { input.blur(); }
+                    if (ev.key === 'Enter' && !ev.shiftKey) { input.blur(); }
                 });
                 input.addEventListener('keydown', (ev) => {
                     if (ev.key === 'Escape') { input.value = oldTitle; input.blur(); }
@@ -757,17 +830,39 @@
                 });
                 titleSpan.replaceWith(input);
                 input.focus();
-                input.select();
+                // 根据点击位置推算光标应在哪个字符
+                const rect = input.getBoundingClientRect();
+                const relX = clickX - rect.left;
+                const cs = getComputedStyle(input);
+                const pl = parseFloat(cs.paddingLeft);
+                // 用 canvas 测量每个字符宽度来定位
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.font = cs.font;
+                let accum = pl;
+                let caretPos = 0;
+                for (let i = 0; i < input.value.length; i++) {
+                    const cw = ctx.measureText(input.value[i]).width;
+                    if (accum + cw / 2 > relX) break;
+                    accum += cw;
+                    caretPos = i + 1;
+                }
+                // 延迟设置光标和高度
+                requestAnimationFrame(() => {
+                    input.setSelectionRange(caretPos, caretPos);
+                    autoResize();
+                });
             });
 
             const dueDeleteWrapper = document.createElement('div');
             dueDeleteWrapper.className = 'due-and-delete';
             const dueSpan = document.createElement('span');
-            dueSpan.className = `todo-due ${getDueClass(task.due)}`;
+            const dueCls = getDueClass(task.due, task.completed);
+            dueSpan.className = `todo-due ${dueCls}`;
             if (task.due) {
-                dueSpan.innerHTML = `📅 ${formatDueDate(task.due)}`;
-                if (getDueClass(task.due) === 'due-urgent') dueSpan.innerHTML = `⚠️ ${formatDueDate(task.due)}`;
-                else if (getDueClass(task.due) === 'due-soon') dueSpan.innerHTML = `⏳ ${formatDueDate(task.due)}`;
+                if (dueCls.startsWith('due-urgent')) dueSpan.innerHTML = task.completed ? `✓ ${formatDueDate(task.due)}` : `⚠️ ${formatDueDate(task.due)}`;
+                else if (dueCls === 'due-soon') dueSpan.innerHTML = `⏳ ${formatDueDate(task.due)}`;
+                else dueSpan.innerHTML = `📅 ${formatDueDate(task.due)}`;
             } else {
                 dueSpan.innerHTML = '⏚ 无期限';
             }
@@ -854,7 +949,7 @@
         sortableInstance = new Sortable(todoListEl, {
             animation: 200,
             ghostClass: 'sortable-drag',
-            filter: '.todo-check, .todo-check input, .todo-due, .todo-title, .inline-due-input, .inline-edit-input, .delete-simple',
+            filter: '.todo-check, .custom-checkbox, .custom-checkbox input, .todo-due, .todo-title, .inline-due-input, .inline-edit-input, .delete-simple',
             preventOnFilter: false,
             onEnd: () => {
                 const items = document.querySelectorAll('#todoList .todo-item');
