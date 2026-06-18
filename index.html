@@ -800,6 +800,8 @@
             animation: 200,
             handle: '.todo-item',
             ghostClass: 'sortable-drag',
+            delay: 500,
+            delayOnTouchOnly: true,
             onEnd: () => {
                 const items = document.querySelectorAll('#todoList .todo-item');
                 const newOrder = [];
